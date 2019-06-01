@@ -31,13 +31,13 @@ public:
     virtual int subtract(IVector const* const right) = 0;
     virtual int multiplyByScalar(double scalar) = 0;
     virtual int dotProduct(IVector const* const right, double& res) const = 0;
-    virtual int crossProduct(IVector const* const right) = 0;
+    // virtual int crossProduct(IVector const* const right) = 0;
 
     /*static operations*/
     static IVector* add(IVector const* const left, IVector const* const right);
     static IVector* subtract(IVector const* const left, IVector const* const right);
     static IVector* multiplyByScalar(IVector const* const left, double scalar);
-    static IVector* crossProduct(IVector const* const left, IVector const* const right);
+    // static IVector* crossProduct(IVector const* const left, IVector const* const right);
 
     /*comparators*/
     virtual int gt(IVector const* const right, NormType type, bool& result) const = 0;
