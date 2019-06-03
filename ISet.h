@@ -13,7 +13,7 @@ public:
     virtual int put(IVector const* const item) = 0;
     virtual int get(unsigned int index, IVector*& pItem) const = 0;
     virtual int remove(unsigned int index) = 0;
-    virtual int contains(IVector const* const pItem) const = 0;
+    virtual int contains(IVector const* const pItem, bool & rc) const = 0;
     virtual unsigned int getSize() const = 0;
     virtual int clear() = 0;
 
