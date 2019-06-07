@@ -7,6 +7,15 @@
 class SHARED_EXPORT ISet
 {
 public:
+
+    enum InterfaceTypes
+    {
+        INTERFACE_0,
+        DIMENSION_INTERFACE_IMPL
+    };
+
+    virtual int getId() const = 0;
+
     /*factories*/
     static ISet* createSet(unsigned int R_dim);
 
