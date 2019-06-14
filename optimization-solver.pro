@@ -1,12 +1,16 @@
-QT       += core gui
+QT       += core gui sql printsupport
 
 TARGET = optimization-solver
 TEMPLATE = app
 
 
-SOURCES += main.cpp mainwindow.cpp
+SOURCES += main.cpp \
+    controller.cpp \
+    sqlconnectiondialog.cpp \
+    insertsolverdialog.cpp \
+    qcustomplot.cpp
 
-HEADERS  += mainwindow.h \
+HEADERS  += \
     SHARED_EXPORT.h \
     IVector.h \
     ISolver.h \
@@ -15,6 +19,13 @@ HEADERS  += mainwindow.h \
     ILog.h \
     ICompact.h \
     IBrocker.h \
-    error.h
+    error.h \
+    controller.h \
+    sqlconnectiondialog.h \
+    insertsolverdialog.h \
+    qcustomplot.h
 
-FORMS    += mainwindow.ui
+FORMS    += \
+    controller.ui \
+    sqlconnectiondialog.ui \
+    insertsolverdialog.ui
