@@ -7,6 +7,7 @@
 #include "ui_controller.h"
 
 QT_FORWARD_DECLARE_CLASS(QSqlError)
+QT_FORWARD_DECLARE_CLASS(QSqlRecord)
 
 class Controller : public QWidget, private Ui::Controller
 {
@@ -39,6 +40,7 @@ signals:
 private:
     void updateActions();
     bool select();
+    bool checkTable(QSqlRecord record);
 
 };
 

@@ -18,6 +18,7 @@ Controller::Controller(QWidget *parent)
     table->addAction(deleteRowAction);
     insButton->setEnabled(false);
     saveImageButton->setEnabled(false);
+    drawButton->setEnabled(false);
     spinLeftBorder->setMinimum(-DBL_MAX);
     spinLeftBorder->setMaximum(DBL_MAX);
     spinRightBorder->setMinimum(-DBL_MAX);
@@ -46,13 +47,14 @@ QSqlError Controller::changeConnection(const QString &driver, const QString &dbN
     db.setPort(port);
     if (!db.open(user, passwd)) {
         err = db.lastError();
-        db = QSqlDatabase();
         QSqlDatabase::removeDatabase(QString("OptimizationSolver%1").arg(cCount));
         emit statusMessage(tr("Error connection."));
     } else if (select()) {
         insButton->setEnabled(true);
     } else {
         insButton->setEnabled(false);
+        db.close();
+        QSqlDatabase::removeDatabase(QString("OptimizationSolver%1").arg(cCount));
     }
 
     return err;
@@ -70,7 +72,7 @@ void Controller::changeConnection()
                              "opening the connection: ") + err.text());
 }
 
-void Controller::select()
+bool Controller::select()
 {
     QStringList connectionNames = QSqlDatabase::connectionNames();
     QSqlDatabase curDB = QSqlDatabase::database(connectionNames.value(connectionNames.count() - 1));
@@ -92,6 +94,11 @@ void Controller::select()
     model->select();
     if (model->lastError().type() != QSqlError::NoError) {
         emit statusMessage(model->lastError().text());
+        delete model;
+        return false;
+    }
+    if (!checkTable(model->record())) {
+        emit statusMessage(tr("Bad table."));
         delete model;
         return false;
     }
@@ -198,6 +205,7 @@ void Controller::on_solveButton_clicked()
 
     spinAxis->setMinimum(1);
     spinAxis->setMaximum(3); // get dim from problem
+    solveButton->setEnabled(true);
     emit statusMessage(tr("Problem was solved."));
 }
 
@@ -286,4 +294,14 @@ void Controller::on_saveImageButton_clicked()
         plot->savePng(fileName);
         emit statusMessage(tr("Image saved in %1.").arg(fileName));
     }
+}
+
+bool Controller::checkTable(QSqlRecord record)
+{
+    static QString fields[3] = {"Name", "Description", "Path"};
+    if (record.count() != 3) return false;
+    for (int i = 0; i < 3; ++i)
+        if (record.field(i).type() != QVariant::String
+                || record.field(i).name().compare(fields[i])) return false;
+    return true;
 }
