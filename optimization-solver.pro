@@ -1,5 +1,7 @@
 QT       += core gui
 
+QMAKE_CXXFLAGS += -std=gnu++0x
+
 TARGET = optimization-solver
 TEMPLATE = app
 
