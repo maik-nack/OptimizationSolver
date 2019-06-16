@@ -35,7 +35,7 @@ public:
         virtual bool isBegin() const = 0;
 
     protected:
-        IIterator(ISet const* const set, int pos) {};
+        IIterator(ISet const* const set, int pos);
 
         /*dtor*/
         virtual ~IIterator() = default;
