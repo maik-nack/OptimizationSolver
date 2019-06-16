@@ -1,17 +1,24 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
+#include <cstring>
 #include "IVector.h"
 #include "ILog.h"
 
 #define DIM_CHECK(vector, funcName)\
 {if (size != vector->getDim())\
-{ ILog::report("Vectors dimensions mismatch.\n");\
+{ char msg[100] = "IVector.";\
+    strcat(msg, funcName);\
+    strcat(msg, ": Vectors dimensions mismatch.\n");\
+    ILog::report(msg);\
     return ERR_DIMENSIONS_MISMATCH; }};
 
 #define RANGE_CHECK(ind, funcName)\
 {if (ind >= size)\
-{ ILog::report("Index out of range.\n");\
+{ char msg[100] = "IVector.";\
+    strcat(msg, funcName);\
+    strcat(msg, ": Index out of range.\n");\
+    ILog::report(msg);\
     return ERR_OUT_OF_RANGE; }};
 
 namespace {
@@ -113,14 +120,26 @@ int Vector::add(IVector const* const right)
 
     int errCode;
     double coord;
+    double *vals = new double[size];
+    if (!vals)
+    {
+        ILog::report("IVector.add: Not enough memory.\n");
+        return NULL;
+    }
+
     for (unsigned int i = 0; i < size; ++i)
     {
         errCode = right->getCoord(i, coord);
         if (errCode != ERR_OK)
+        {
+            delete[] vals;
             return errCode;
-
-        vals[i] += coord;
+        }
+        vals[i] = this->vals[i] + coord;
     }
+
+    delete[] this->vals;
+    this->vals = vals;
 
     return ERR_OK;
 }
@@ -136,14 +155,26 @@ int Vector::subtract(IVector const* const right)
 
     int errCode;
     double coord;
+    double *vals = new double[size];
+    if (!vals)
+    {
+        ILog::report("IVector.add: Not enough memory.\n");
+        return NULL;
+    }
+
     for (unsigned int i = 0; i < size; ++i)
     {
         errCode = right->getCoord(i, coord);
         if (errCode != ERR_OK)
+        {
+            delete[] vals;
             return errCode;
-
-        vals[i] -= coord;
+        }
+        vals[i] = this->vals[i] - coord;
     }
+
+    delete[] this->vals;
+    this->vals = vals;
 
     return ERR_OK;
 }
@@ -168,6 +199,7 @@ int Vector::dotProduct(IVector const* const right, double& res) const
 
     int errCode;
     double coord;
+
     for (unsigned int i = 0; i < size; ++i)
     {
         errCode = right->getCoord(i, coord);
@@ -368,7 +400,7 @@ int Vector::eq(IVector const* const right, NormType type, bool& result, double p
     }
 
     IVector *v = IVector::subtract(this, right);
-    if(!v)
+    if (!v)
     {
         ILog::report("IVector.eq: Can't subtract vectors.\n");
         return ERR_WRONG_ARG;
@@ -380,6 +412,8 @@ int Vector::eq(IVector const* const right, NormType type, bool& result, double p
         return errCode;
 
     result = abs(norm) < precision;
+
+    delete[] v;
 
     return ERR_OK;
 }
