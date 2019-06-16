@@ -1,16 +1,15 @@
-//#include <QtGlobal>
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
 #include "IVector.h"
 #include "ILog.h"
 
-#define DIM_CHECK(vector)\
+#define DIM_CHECK(vector, funcName)\
 {if (size != vector->getDim())\
 { ILog::report("Vectors dimensions mismatch.\n");\
     return ERR_DIMENSIONS_MISMATCH; }};
 
-#define RANGE_CHECK(ind)\
+#define RANGE_CHECK(ind, funcName)\
 {if (ind >= size)\
 { ILog::report("Index out of range.\n");\
     return ERR_OUT_OF_RANGE; }};
@@ -45,7 +44,7 @@ public:
     int eq(IVector const* const right, NormType type, bool& result, double precision) const;
 
     /*ctor*/
-    Vector(unsigned int size, double const* vals);
+    Vector(unsigned int size, double* vals);
 
     /*dtor*/
     ~Vector();
@@ -63,12 +62,10 @@ private:
 };
 }
 
-Vector::Vector(unsigned int size, const double *vals)
+Vector::Vector(unsigned int size, double *vals)
 {
     this->size = size;
-    this->vals = new(std::nothrow) double[size];
-    for(unsigned int i = 0; i < size; ++i)
-        this->vals[i] = vals[i];
+    this->vals = vals;
 }
 
 Vector::~Vector()
@@ -78,29 +75,48 @@ Vector::~Vector()
 
 IVector* IVector::createVector(unsigned int size, double const* vals)
 {
-    if(!vals)
+    if (!vals)
     {
-        ILog::report("Can't create vector, vals - nullptr.\n");
+        ILog::report("IVector.createVector: Can't create vector, vals - nullptr.\n");
         return NULL;
     }
-    return new(std::nothrow) Vector(size, vals);
+
+    double *valsCopy = new(std::nothrow) double[size];
+    if (!valsCopy)
+    {
+        ILog::report("IVector.createVector: Not enough memory.\n");
+        return NULL;
+    }
+
+    for (unsigned int i = 0; i < size; ++i)
+        valsCopy[i] = vals[i];
+
+    IVector *v = new(std::nothrow) Vector(size, valsCopy);
+    if (!v)
+    {
+        delete[] valsCopy;
+        ILog::report("IVector.createVector: Not enough memory.\n");
+        return NULL;
+    }
+
+    return v;
 }
 
 int Vector::add(IVector const* const right)
 {
     if (!right)
     {
-        ILog::report("Can't add vector, right - nullptr.\n");
+        ILog::report("IVector.add: Can't add vector, right - nullptr.\n");
         return ERR_WRONG_ARG;
     }
-    DIM_CHECK(right);
+    DIM_CHECK(right, "add");
 
     int errCode;
     double coord;
     for (unsigned int i = 0; i < size; ++i)
     {
         errCode = right->getCoord(i, coord);
-        if(errCode != ERR_OK)
+        if (errCode != ERR_OK)
             return errCode;
 
         vals[i] += coord;
@@ -113,17 +129,17 @@ int Vector::subtract(IVector const* const right)
 {
     if (!right)
     {
-        ILog::report("Can't subtract vector, right - nullptr.\n");
+        ILog::report("IVector.subtract: Can't subtract vector, right - nullptr.\n");
         return ERR_WRONG_ARG;
     }
-    DIM_CHECK(right);
+    DIM_CHECK(right, "subtract");
 
     int errCode;
     double coord;
     for (unsigned int i = 0; i < size; ++i)
     {
         errCode = right->getCoord(i, coord);
-        if(errCode != ERR_OK)
+        if (errCode != ERR_OK)
             return errCode;
 
         vals[i] -= coord;
@@ -145,17 +161,17 @@ int Vector::dotProduct(IVector const* const right, double& res) const
     res = 0;
     if (!right)
     {
-        ILog::report("Can't calculate dot product, right vector - nullptr.\n");
+        ILog::report("IVector.dotProduct: Can't calculate dot product, right vector - nullptr.\n");
         return ERR_WRONG_ARG;
     }
-    DIM_CHECK(right);
+    DIM_CHECK(right, "dotProduct");
 
     int errCode;
     double coord;
     for (unsigned int i = 0; i < size; ++i)
     {
         errCode = right->getCoord(i, coord);
-        if(errCode != ERR_OK)
+        if (errCode != ERR_OK)
             return errCode;
 
         res += vals[i] * coord;
@@ -174,35 +190,12 @@ IVector* IVector::add(IVector const* const left, IVector const* const right)
 {
     if (!right || !left || left->getDim() != right->getDim())
     {
-        ILog::report("Can't add vector, some of vectors - nullptr or dimensions mismatch.\n");
+        ILog::report("IVector.add: Can't add vector, some of vectors - nullptr or dimensions mismatch.\n");
         return NULL;
     }
 
-    double coordL, coordR;
-    unsigned int size = left->getDim();
-    double *vals = new(std::nothrow) double[size];
-    if (!vals)
-    {
-        ILog::report("Not enough memory.\n");
-        return NULL;
-    }
-
-    int errCode;
-    for (unsigned int i = 0; i < size; ++i)
-    {
-        errCode = left->getCoord(i, coordL);
-        if(errCode != ERR_OK)
-            return NULL;
-        errCode = right->getCoord(i, coordR);
-        if(errCode != ERR_OK)
-            return NULL;
-
-        vals[i] = coordL + coordR;
-    }
-
-    IVector *v = createVector(size, vals);
-
-    delete[] vals;
+    IVector *v = left->clone();
+    v->add(right);
 
     return v;
 }
@@ -211,35 +204,12 @@ IVector* IVector::subtract(IVector const* const left, IVector const* const right
 {
     if (!right || !left || left->getDim() != right->getDim())
     {
-        ILog::report("Can't subtract vector, some of vectors - nullptr or dimensions mismatch.\n");
+        ILog::report("IVector.subtract: Can't subtract vector, some of vectors - nullptr or dimensions mismatch.\n");
         return NULL;
     }
 
-    double coordL, coordR;
-    unsigned int size = left->getDim();
-    double *vals = new(std::nothrow) double[size];
-    if (!vals)
-    {
-        ILog::report("Not enough memory.\n");
-        return NULL;
-    }
-
-    int errCode;
-    for (unsigned int i = 0; i < size; ++i)
-    {
-        errCode = left->getCoord(i, coordL);
-        if(errCode != ERR_OK)
-            return NULL;
-        errCode = right->getCoord(i, coordR);
-        if(errCode != ERR_OK)
-            return NULL;
-
-        vals[i] = coordL - coordR;
-    }
-
-    IVector *v = createVector(size, vals);
-
-    delete[] vals;
+    IVector *v = left->clone();
+    v->subtract(right);
 
     return v;
 }
@@ -248,32 +218,12 @@ IVector* IVector::multiplyByScalar(IVector const* const left, double scalar)
 {
     if (!left)
     {
-        ILog::report("Can't multiply vector by scalar, vector - nullpt.\n");
+        ILog::report("IVector.multiplyByScalar: Can't multiply vector by scalar, vector - nullpt.\n");
         return NULL;
     }
 
-    double coord;
-    unsigned int size = left->getDim();
-    double *vals = new(std::nothrow) double[size];
-    if (!vals)
-    {
-        ILog::report("Not enough memory.\n");
-        return NULL;
-    }
-
-    int errCode;
-    for (unsigned int i = 0; i < size; ++i)
-    {
-        errCode = left->getCoord(i, coord);
-        if(errCode != ERR_OK)
-            return NULL;
-
-        vals[i] = coord * scalar;
-    }
-
-    IVector *v = createVector(size, vals);
-
-    delete[] vals;
+    IVector *v = left->clone();
+    v->multiplyByScalar(scalar);
 
     return v;
 }
@@ -308,7 +258,7 @@ int Vector::norm(NormType type, double& res) const
         break;
 
     default:
-        ILog::report("Norm not defined.\n");
+        ILog::report("IVector.norm: Norm not defined.\n");
         return ERR_NORM_NOT_DEFINED;
     }
     return ERR_OK;
@@ -316,7 +266,7 @@ int Vector::norm(NormType type, double& res) const
 
 int Vector::setCoord(unsigned int index, double elem)
 {
-    RANGE_CHECK(index);
+    RANGE_CHECK(index, "setCoord");
     vals[index] = elem;
 
     return ERR_OK;
@@ -324,7 +274,7 @@ int Vector::setCoord(unsigned int index, double elem)
 
 int Vector::getCoord(unsigned int index, double & elem) const
 {
-    RANGE_CHECK(index);
+    RANGE_CHECK(index, "getCoord");
     elem = vals[index];
 
     return ERR_OK;
@@ -332,10 +282,16 @@ int Vector::getCoord(unsigned int index, double & elem) const
 
 int Vector::setAllCoords(unsigned int dim, double* coords)
 {
-    if(dim != size)
+    if (dim != size)
     {
-        ILog::report("Dimensions mismatch.\n");
+        ILog::report("IVector.setAllCoords: Dimensions mismatch.\n");
         return ERR_DIMENSIONS_MISMATCH;
+    }
+
+    if (!coords)
+    {
+        ILog::report("IVector.setAllCoords: Coords - nullptr.\n");
+        return ERR_WRONG_ARG;
     }
 
     for (unsigned int i = 0; i < size; ++i)
@@ -354,25 +310,17 @@ int Vector::getCoordsPtr(unsigned int & dim, double const*& elem) const
 
 IVector* Vector::clone() const
 {
-    double *vals = new(std::nothrow) double[size];
-    if (!vals)
-    {
-        ILog::report("Not enough memory.\n");
-        return NULL;
-    }
-
-    for (unsigned int i = 0; i < size; ++i)
-        vals[i] = this->vals[i];
-
-    IVector *v = createVector(size, vals);
-
-    delete[] vals;
-
-    return v;
+    return createVector(size, vals);
 }
 
 int Vector::gt(IVector const* const right, NormType type, bool& result) const
 {
+    if (!right)
+    {
+        ILog::report("IVector.gt: Right - nullptr.\n");
+        return ERR_WRONG_ARG;
+    }
+
     double norm, normR;
     int errCode;
 
@@ -380,7 +328,7 @@ int Vector::gt(IVector const* const right, NormType type, bool& result) const
     if (errCode != ERR_OK)
         return errCode;
     errCode = right->norm(type, normR);
-    if(errCode != ERR_OK)
+    if (errCode != ERR_OK)
         return errCode;
 
     result = norm > normR;
@@ -390,6 +338,12 @@ int Vector::gt(IVector const* const right, NormType type, bool& result) const
 
 int Vector::lt(IVector const* const right, NormType type, bool& result) const
 {
+    if (!right)
+    {
+        ILog::report("IVector.lt: Right - nullptr.\n");
+        return ERR_WRONG_ARG;
+    }
+
     double norm, normR;
     int errCode;
 
@@ -397,7 +351,7 @@ int Vector::lt(IVector const* const right, NormType type, bool& result) const
     if (errCode != ERR_OK)
         return errCode;
     errCode = right->norm(type, normR);
-    if(errCode != ERR_OK)
+    if (errCode != ERR_OK)
         return errCode;
 
     result = norm < normR;
@@ -407,17 +361,25 @@ int Vector::lt(IVector const* const right, NormType type, bool& result) const
 
 int Vector::eq(IVector const* const right, NormType type, bool& result, double precision) const
 {
-    double norm, normR;
-    int errCode;
+    if (!right)
+    {
+        ILog::report("IVector.eq: Right - nullptr.\n");
+        return ERR_WRONG_ARG;
+    }
 
-    errCode = this->norm(type, norm);
+    IVector *v = IVector::subtract(this, right);
+    if(!v)
+    {
+        ILog::report("IVector.eq: Can't subtract vectors.\n");
+        return ERR_WRONG_ARG;
+    }
+
+    double norm;
+    int errCode = v->norm(type, norm);
     if (errCode != ERR_OK)
         return errCode;
-    errCode = right->norm(type, normR);
-    if(errCode != ERR_OK)
-        return errCode;
 
-    result = abs(norm - normR) < precision;
+    result = abs(norm) < precision;
 
     return ERR_OK;
 }
