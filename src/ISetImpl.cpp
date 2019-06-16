@@ -4,7 +4,7 @@
 #include <QVector>
 #include <cmath>
 
-#define EPS 1e-8
+const double EPS = 1e-8;
 
 namespace {
     class ISetImpl : public ISet
@@ -169,12 +169,22 @@ unsigned int ISetImpl::getSize() const {
 int ISetImpl::clear() {
     for(int i = 0; i < _ptr_points.size(); i++) {
         if(!_ptr_points[i]) {
-            ILog::report("ISet.clear: ISet contains nullptr\n");
+            ILog::report("ISet.clear: ISet contains nullptr vector\n");
             return ERR_ANY_OTHER;
         }
         delete _ptr_points[i];
     }
     _ptr_points.clear();
+
+    for(int i = 0; i < _ptr_iterators.size(); i++) {
+        if(!_ptr_iterators[i]) {
+            ILog::report("ISet.clear: ISet contains nullptr iterator\n");
+            return ERR_ANY_OTHER;
+        }
+        delete _ptr_iterators[i];
+    }
+    _ptr_iterators.clear();
+
     return ERR_OK;
 }
 
@@ -187,6 +197,7 @@ ISetImpl::IIterator* ISetImpl::end() {
             = new(std::nothrow) ISetImpl::IIteratorImpl::IIteratorImpl(this, _ptr_points.size() - 1);
     if(!iterator) {
         ILog::report("ISet.end: Not enough memory\n");
+        return NULL;
     }
      _ptr_iterators.append(iterator);
     return iterator;
@@ -201,6 +212,7 @@ ISetImpl::IIterator* ISetImpl::begin() {
             = new(std::nothrow) ISetImpl::IIteratorImpl::IIteratorImpl(this, 0);
     if(!iterator) {
         ILog::report("ISet.begin: Not enough memory\n");
+        return NULL;
     }
     _ptr_iterators.append(iterator);
     return iterator;
