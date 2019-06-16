@@ -278,4 +278,6 @@ bool ISetImpl::IIteratorImpl::isBegin() const {
     return _pos == 0;
 }
 
+ISet::IIterator::IIterator(const ISet *const set, int pos) {}
+
 ISetImpl::IIteratorImpl::IIteratorImpl(ISet const* const set, int pos): ISet::IIterator(set, pos), _set(set), _pos(pos) {}
