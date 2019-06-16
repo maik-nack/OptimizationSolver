@@ -56,9 +56,6 @@ public:
     /*dtor*/
     ~Vector();
 
-protected:
-    Vector() = default;
-
 private:
     double* vals;
     size_t size;
@@ -120,11 +117,11 @@ int Vector::add(IVector const* const right)
 
     int errCode;
     double coord;
-    double *vals = new double[size];
+    double *vals = new(std::nothrow) double[size];
     if (!vals)
     {
         ILog::report("IVector.add: Not enough memory.\n");
-        return NULL;
+        return ERR_MEMORY_ALLOCATION;
     }
 
     for (unsigned int i = 0; i < size; ++i)
@@ -155,11 +152,11 @@ int Vector::subtract(IVector const* const right)
 
     int errCode;
     double coord;
-    double *vals = new double[size];
+    double *vals = new(std::nothrow) double[size];
     if (!vals)
     {
         ILog::report("IVector.add: Not enough memory.\n");
-        return NULL;
+        return ERR_MEMORY_ALLOCATION;
     }
 
     for (unsigned int i = 0; i < size; ++i)
@@ -227,6 +224,11 @@ IVector* IVector::add(IVector const* const left, IVector const* const right)
     }
 
     IVector *v = left->clone();
+    if (!v)
+    {
+        ILog::report("IVector.add: Can't add vector, can't clone vector.\n");
+        return NULL;
+    }
     v->add(right);
 
     return v;
@@ -241,6 +243,11 @@ IVector* IVector::subtract(IVector const* const left, IVector const* const right
     }
 
     IVector *v = left->clone();
+    if (!v)
+    {
+        ILog::report("IVector.subtract: Can't subtract vector, can't clone vector.\n");
+        return NULL;
+    }
     v->subtract(right);
 
     return v;
@@ -255,6 +262,11 @@ IVector* IVector::multiplyByScalar(IVector const* const left, double scalar)
     }
 
     IVector *v = left->clone();
+    if (!v)
+    {
+        ILog::report("IVector.multiplyByScalar: Can't multiply vector by scalar, can't clone vector.\n");
+        return NULL;
+    }
     v->multiplyByScalar(scalar);
 
     return v;
@@ -411,9 +423,9 @@ int Vector::eq(IVector const* const right, NormType type, bool& result, double p
     if (errCode != ERR_OK)
         return errCode;
 
-    result = abs(norm) < precision;
+    result = norm < precision;
 
-    delete[] v;
+    delete v;
 
     return ERR_OK;
 }
