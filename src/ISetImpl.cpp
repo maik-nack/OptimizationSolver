@@ -126,6 +126,15 @@ int ISetImpl::remove(unsigned int index) {
         return ERR_OUT_OF_RANGE;
     }
 
+    for(int i = 0; i < _ptr_iterators.size(); i++) {
+        if(_ptr_iterators[i]->_pos > index) {
+            _ptr_iterators[i]->_pos--;
+        }
+        else if(_ptr_iterators[i]->_pos == index) {
+            deleteIterator(_ptr_iterators[i]);
+        }
+    }
+
     _ptr_points.remove(index);
 
     return ERR_OK;
@@ -170,6 +179,10 @@ int ISetImpl::clear() {
 }
 
 ISetImpl::IIterator* ISetImpl::end() {
+    if(_ptr_points.size() == 0) {
+        ILog::report("ISet.end: Can not create iterator of empty set\n");
+        return NULL;
+    }
     ISetImpl::IIteratorImpl* iterator
             = new(std::nothrow) ISetImpl::IIteratorImpl::IIteratorImpl(this, _ptr_points.size() - 1);
     if(!iterator) {
@@ -180,6 +193,10 @@ ISetImpl::IIterator* ISetImpl::end() {
 }
 
 ISetImpl::IIterator* ISetImpl::begin() {
+    if(_ptr_points.size() == 0) {
+        ILog::report("ISet.begin: Can not create iterator of empty set\n");
+        return NULL;
+    }
     ISetImpl::IIteratorImpl* iterator
             = new(std::nothrow) ISetImpl::IIteratorImpl::IIteratorImpl(this, 0);
     if(!iterator) {
