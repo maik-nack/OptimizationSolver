@@ -46,6 +46,7 @@ namespace {
 
 
     private:
+        int findIterator(IIterator * pIter);
         QVector<IVector*> _ptr_points;
         QVector<IIteratorImpl*> _ptr_iterators;
         unsigned int _dim;
@@ -209,8 +210,8 @@ ISetImpl::IIterator* ISetImpl::begin() {
     return iterator;
 }
 
-int findIterator(QVector<ISetImpl::IIteratorImpl*> ptr_iterators, ISet::IIterator * pIter) {
-    for (int i = 0; i < ptr_iterators.size(); i++) {
+int ISetImpl::findIterator(ISet::IIterator * pIter) {
+    for (int i = 0; i < _ptr_iterators.size(); i++) {
         if (dynamic_cast<ISet::IIterator>(ptr_iterators[i]) == pIter) {
             return i;
         }
@@ -224,7 +225,7 @@ int ISetImpl::deleteIterator(IIterator * pIter) {
         return ERR_WRONG_ARG;
     }
 
-    int indIterator = findIterator(_ptr_iterators, pIter);
+    int indIterator = findIterator(pIter);
 
     if (indIterator == -1) {
         ILog::report("ISet.deleteIterator: Set does not contain input iterator\n");
@@ -243,14 +244,14 @@ int ISetImpl::getByIterator(IIterator const* pIter, IVector*& pItem) const {
         return ERR_WRONG_ARG;
     }
 
-    int indIterator = findIterator(_ptr_iterators, pIter);
+    int indIterator = findIterator(pIter);
 
     if (indIterator == -1) {
         ILog::report("ISet.getByIterator: Set does not contain input iterator\n");
         return ERR_WRONG_ARG;
     }
     else {
-        return _ptr_iterators[i]->_set->get(_ptr_iterators[i]->_pos, pItem);
+        return get(_ptr_iterators[i]->_pos, pItem);
     }
 }
 
