@@ -38,7 +38,7 @@ public:
         IIterator(ISet const* const set, int pos);
 
         /*dtor*/
-        virtual ~IIterator() = default;
+        virtual ~IIterator(){};
 
     private:
         /*non default copyable*/
@@ -53,7 +53,7 @@ public:
     virtual int getByIterator(IIterator const* pIter, IVector*& pItem) const = 0;
 
     /*dtor*/
-    virtual ~ISet() = default;
+    virtual ~ISet(){};
 
 protected:
     ISet() = default;
