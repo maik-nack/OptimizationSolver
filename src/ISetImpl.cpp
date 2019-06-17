@@ -212,7 +212,7 @@ ISetImpl::IIterator* ISetImpl::begin() {
 
 int ISetImpl::findIterator(ISet::IIterator * pIter) {
     for (int i = 0; i < _ptr_iterators.size(); i++) {
-        if (dynamic_cast<ISet::IIterator>(ptr_iterators[i]) == pIter) {
+        if (dynamic_cast<ISet::IIterator*>(ptr_iterators[i]) == pIter) {
             return i;
         }
     }
