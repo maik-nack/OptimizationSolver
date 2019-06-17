@@ -5,6 +5,9 @@
 #include <QDebug>
 
 #include "ui_controller.h"
+#include "IBrocker.h"
+#include "ISolver.h"
+#include "IProblem.h"
 
 QT_FORWARD_DECLARE_CLASS(QSqlError)
 QT_FORWARD_DECLARE_CLASS(QSqlRecord)
@@ -38,6 +41,11 @@ signals:
     void statusMessage(const QString &message);
 
 private:
+    typedef IBrocker *(* get_brocker_func)();
+    IBrocker * _problem_brocker, * _solver_brocker;
+    IProblem * _problem;
+    ISolver * _solver;
+
     void updateActions();
     bool select();
     bool checkTable(QSqlRecord record);

@@ -23,10 +23,16 @@ Controller::Controller(QWidget *parent)
     spinLeftBorder->setMaximum(DBL_MAX);
     spinRightBorder->setMinimum(-DBL_MAX);
     spinRightBorder->setMaximum(DBL_MAX);
+
+    _problem_brocker = _solver_brocker = NULL;
+    _problem = NULL;
+    _solver = NULL;
 }
 
 Controller::~Controller()
 {
+    if (_problem_brocker) _problem_brocker->release();
+    if (_solver_brocker) _solver_brocker->release();
 }
 
 void Controller::on_browseButton_clicked()
@@ -200,12 +206,115 @@ void Controller::on_solveButton_clicked()
         return;
     }
 
-    // create dialog by qml
-    // solve
+    QLibrary libProblem(problemInfo.absoluteFilePath(), NULL);
+    if (!libProblem.load()) {
+        QMessageBox::critical(this, tr("Library with problem failed to load:"), libProblem.errorString());
+        return;
+    }
 
-    spinAxis->setMinimum(1);
-    spinAxis->setMaximum(3); // get dim from problem
-    solveButton->setEnabled(true);
+    QLibrary libSolver(solverInfo.absoluteFilePath(), NULL);
+    if (!libSolver.load()) {
+        QMessageBox::critical(this, tr("Library with solver failed to load:"), libSolver.errorString());
+        return;
+    }
+
+    get_brocker_func problem_brocker_func = NULL, solver_brocker_func = NULL;
+    problem_brocker_func = reinterpret_cast<get_brocker_func>(libProblem.resolve("getBrocker"));
+    if (!problem_brocker_func) {
+        QMessageBox::critical(this, tr("getBrocker wasn't resolved"),
+                              tr("Failed to get function getBrocker from library with problem."));
+        return;
+    }
+    solver_brocker_func = reinterpret_cast<get_brocker_func>(libSolver.resolve("getBrocker"));
+    if (!solver_brocker_func) {
+        QMessageBox::critical(this, tr("getBrocker wasn't resolved"),
+                              tr("Failed to get function getBrocker from library with solver."));
+        return;
+    }
+
+    IBrocker * problem_brocker = NULL, * solver_brocker = NULL;
+    IProblem * problem = NULL;
+    ISolver * solver = NULL;
+
+    problem_brocker = reinterpret_cast<IBrocker*>(problem_brocker_func());
+    if (!problem_brocker) {
+        QMessageBox::critical(this, tr("Failed to get brocker"),
+                              tr("Failed to get brocker from library with problem."));
+        return;
+    } else {
+        if (problem_brocker->canCastTo(IBrocker::PROBLEM)) {
+            problem = reinterpret_cast<IProblem*>(problem_brocker->getInterfaceImpl(IBrocker::PROBLEM));
+        } else {
+            problem_brocker->release();
+            QMessageBox::critical(this, tr("Failed to cast brocker"),
+                                  tr("Failed to cast brocker to problem."));
+            return;
+        }
+    }
+    solver_brocker = reinterpret_cast<IBrocker*>(solver_brocker_func());
+    if (!solver_brocker) {
+        problem_brocker->release();
+        QMessageBox::critical(this, tr("Failed to get brocker"),
+                              tr("Failed to get brocker from library with solver."));
+        return;
+    } else {
+        if (solver_brocker->canCastTo(IBrocker::SOLVER)) {
+            solver = reinterpret_cast<ISolver*>(solver_brocker->getInterfaceImpl(IBrocker::SOLVER));
+        } else {
+            problem_brocker->release();
+            solver_brocker->release();
+            QMessageBox::critical(this, tr("Failed to cast brocker"),
+                                  tr("Failed to cast brocker to solver."));
+            return;
+        }
+    }
+
+    if (solver->setProblem(problem) != ERR_OK) {
+        problem_brocker->release();
+        solver_brocker->release();
+        QMessageBox::critical(this, tr("Failed to set problem"),
+                              tr("Failed to set problem to solver."));
+        return;
+    }
+    QUrl url;
+    if (solver->getQml(url) != ERR_OK) {
+        problem_brocker->release();
+        solver_brocker->release();
+        QMessageBox::critical(this, tr("Failed to get dialog"),
+                              tr("Failed to get dialog from solver for setting parameters."));
+        return;
+    }
+    QString s("parameters"); // open dialog and get parameters form user
+    if (solver->setParams(s) != ERR_OK) {
+        problem_brocker->release();
+        solver_brocker->release();
+        QMessageBox::critical(this, tr("Failed to set parameters"),
+                              tr("Failed to set parameters to solver."));
+        return;
+    }
+    if (solver->solve() != ERR_OK) {
+        problem_brocker->release();
+        solver_brocker->release();
+        QMessageBox::critical(this, tr("Failed to solve problem"),
+                              tr("Solver couldn't solve the problem. See log."));
+        return;
+    }
+    unsigned int dim;
+    if (problem->getArgsDim(dim) != ERR_OK) {
+        QMessageBox::critical(this, tr("Failed to get dimension"),
+                              tr("Failed to get dimension from problem. Plot cannot be drawn."));
+    } else {
+        spinAxis->setMinimum(1);
+        spinAxis->setMaximum(dim);
+        drawButton->setEnabled(true);
+
+        if (_problem_brocker) _problem_brocker->release();
+        if (_solver_brocker) _solver_brocker->release();
+        _problem_brocker = problem_brocker;
+        _solver_brocker = solver_brocker;
+        _solver = solver;
+        _problem = problem;
+    }
     emit statusMessage(tr("Problem was solved."));
 }
 
@@ -222,6 +331,7 @@ void Controller::on_drawButton_clicked()
     double b = spinRightBorder->text().toDouble();
     double h = 0.01, ah = (b - a) / (INT_MAX - 2);
     int N = (b - a) / h + 2, i = 0;
+    unsigned int dim = spinAxis->maximum();
 
     if (axis == 0) {
         emit statusMessage(tr("Not supported axis."));
@@ -239,17 +349,53 @@ void Controller::on_drawButton_clicked()
 
     QVector<double> x(N), y(N);
     QVector<double> px(1), py(1);
-
-    QVector<double> iter(3); // get solution from solver
-    iter[0] = iter[1] = iter[2] = 0.0;
+    double * vector = new (std::nothrow) double[dim];
+    if (!vector) {
+        emit statusMessage(tr("Failed to alloc memory."));
+        return;
+    }
+    IVector * solution = IVector::createVector(dim, vector);
+    delete[] vector;
+    if (!solution) {
+        emit statusMessage(tr("Failed to alloc memory for solution."));
+        return;
+    }
+    if (_solver->getSolution(solution) != ERR_OK) {
+        delete solution;
+        emit statusMessage(tr("Failed to get solution from solver."));
+        return;
+    }
+    IVector * iter = solution->clone();
+    if (!iter) {
+        delete solution;
+        emit statusMessage(tr("Failed to alloc memory."));
+        return;
+    }
 
     for (double X = a; X <= b; X += h)
     {
-        iter[axis - 1] = X;
+        iter->setCoord(axis - 1, X);
         x[i] = X;
-        y[i] = f(iter);
+        if (!_problem->goalFunction(iter, NULL, y[i]) != ERR_OK) {
+            delete solution;
+            delete iter;
+            emit statusMessage(tr("Failed to get value of goal function."));
+            return;
+        }
         i++;
     }
+    delete iter;
+    if (solution->getCoord(axis - 1, px[0]) != ERR_OK) {
+        delete solution;
+        emit statusMessage(tr("Failed to get value of solution point."));
+        return;
+    }
+    if (!_problem->goalFunction(solution, NULL, py[0]) != ERR_OK) {
+        delete solution;
+        emit statusMessage(tr("Failed to get value of goal function in the solution point."));
+        return;
+    }
+    delete solution;
 
     plot->clearGraphs();
 
@@ -268,8 +414,6 @@ void Controller::on_drawButton_clicked()
     }
     plot->yAxis->setRange(minY, maxY);
 
-    px[0] = 1.0;
-    py[0] = 1.0;
     plot->addGraph(plot->xAxis, plot->yAxis);
     plot->graph(1)->setPen(QColor(50, 50, 50, 255));
     plot->graph(1)->setLineStyle(QCPGraph::lsNone);
