@@ -34,7 +34,6 @@ public:
     int subtract(IVector const* const right);
     int multiplyByScalar(double scalar);
     int dotProduct(IVector const* const right, double& res) const;
-    int crossProduct(IVector const* const right);
 
     /*utils*/
     unsigned int getDim() const;
@@ -155,7 +154,7 @@ int Vector::subtract(IVector const* const right)
     double *vals = new(std::nothrow) double[size];
     if (!vals)
     {
-        ILog::report("IVector.add: Not enough memory.\n");
+        ILog::report("IVector.subtract: Not enough memory.\n");
         return ERR_MEMORY_ALLOCATION;
     }
 
@@ -209,12 +208,6 @@ int Vector::dotProduct(IVector const* const right, double& res) const
     return ERR_OK;
 }
 
-int Vector::crossProduct(IVector const* const right)
-{
-    qt_assert("NOT IMPLEMENTED", __FILE__, __LINE__);
-    return ERR_NOT_IMPLEMENTED;
-}
-
 IVector* IVector::add(IVector const* const left, IVector const* const right)
 {
     if (!right || !left || left->getDim() != right->getDim())
@@ -229,7 +222,9 @@ IVector* IVector::add(IVector const* const left, IVector const* const right)
         ILog::report("IVector.add: Can't add vector, can't clone vector.\n");
         return NULL;
     }
-    v->add(right);
+    int errCode = v->add(right);
+    if(errCode != ERR_OK)
+        return NULL;
 
     return v;
 }
@@ -248,7 +243,9 @@ IVector* IVector::subtract(IVector const* const left, IVector const* const right
         ILog::report("IVector.subtract: Can't subtract vector, can't clone vector.\n");
         return NULL;
     }
-    v->subtract(right);
+    int errCode = v->subtract(right);
+    if(errCode != ERR_OK)
+        return NULL;
 
     return v;
 }
@@ -267,7 +264,9 @@ IVector* IVector::multiplyByScalar(IVector const* const left, double scalar)
         ILog::report("IVector.multiplyByScalar: Can't multiply vector by scalar, can't clone vector.\n");
         return NULL;
     }
-    v->multiplyByScalar(scalar);
+    int errCode = v->multiplyByScalar(scalar);
+    if(errCode != ERR_OK)
+        return NULL;
 
     return v;
 }
@@ -420,17 +419,16 @@ int Vector::eq(IVector const* const right, NormType type, bool& result, double p
 
     double norm;
     int errCode = v->norm(type, norm);
+    delete v;
     if (errCode != ERR_OK)
         return errCode;
 
     result = norm < precision;
-
-    delete v;
 
     return ERR_OK;
 }
 
 int Vector::getId() const
 {
-    return INTERFACE_0;
+    return IVector::INTERFACE_0;
 }
