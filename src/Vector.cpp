@@ -224,7 +224,10 @@ IVector* IVector::add(IVector const* const left, IVector const* const right)
     }
     int errCode = v->add(right);
     if(errCode != ERR_OK)
+    {
+        delete v;
         return NULL;
+    }
 
     return v;
 }
@@ -245,7 +248,10 @@ IVector* IVector::subtract(IVector const* const left, IVector const* const right
     }
     int errCode = v->subtract(right);
     if(errCode != ERR_OK)
+    {
+        delete v;
         return NULL;
+    }
 
     return v;
 }
@@ -266,7 +272,10 @@ IVector* IVector::multiplyByScalar(IVector const* const left, double scalar)
     }
     int errCode = v->multiplyByScalar(scalar);
     if(errCode != ERR_OK)
+    {
+        delete v;
         return NULL;
+    }
 
     return v;
 }
