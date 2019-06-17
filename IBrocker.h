@@ -22,9 +22,6 @@ public:
 
     virtual int getId() const = 0;
 
-    /*factories*/
-    static IBrocker * createBrocker(Type type);
-
     virtual bool canCastTo(Type type) const = 0;
     virtual void* getInterfaceImpl(Type type) const = 0;
 
@@ -32,7 +29,7 @@ public:
 
 protected:
     /*dtor*/
-    virtual ~IBrocker() = default;
+    virtual ~IBrocker(){}
 
     IBrocker() = default;
 
