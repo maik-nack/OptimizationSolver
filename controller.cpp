@@ -1,6 +1,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QtSql>
+#include <QLibrary>
 #include <QMessageBox>
 #include <float.h>
 #include <limits.h>
@@ -288,6 +289,7 @@ void Controller::on_solveButton_clicked()
         return;
     }
     QUrl url;
+    url.setPath(select->selectedRows(2).at(0).data().toString());
     if (solver->getQml(url) != ERR_OK) {
         release(problem_brocker, solver_brocker);
         QMessageBox::critical(this, tr("Failed to get dialog"),
