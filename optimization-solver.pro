@@ -1,14 +1,25 @@
-QT       += core gui
+QT       += core gui sql printsupport declarative
+
+QMAKE_CXXFLAGS += -std=gnu++0x
 
 QMAKE_CXXFLAGS += -std=gnu++0x
 
 TARGET = optimization-solver
 TEMPLATE = app
 
+LIBS += "../optimization-solver-build-desktop/debug/log.dll"
+LIBS += "../optimization-solver-build-desktop/debug/vector.dll"
+LIBS += "../optimization-solver-build-desktop/debug/compact.dll"
+LIBS += "../optimization-solver-build-desktop/debug/set.dll"
 
-SOURCES += main.cpp mainwindow.cpp
+SOURCES += main.cpp \
+    controller.cpp \
+    sqlconnectiondialog.cpp \
+    insertsolverdialog.cpp \
+    qcustomplot.cpp \
+    solverdialog.cpp
 
-HEADERS  += mainwindow.h \
+HEADERS  += \
     SHARED_EXPORT.h \
     IVector.h \
     ISolver.h \
@@ -17,6 +28,15 @@ HEADERS  += mainwindow.h \
     ILog.h \
     ICompact.h \
     IBrocker.h \
-    error.h
+    error.h \
+    controller.h \
+    sqlconnectiondialog.h \
+    insertsolverdialog.h \
+    qcustomplot.h \
+    solverdialog.h
 
-FORMS    += mainwindow.ui
+FORMS    += \
+    controller.ui \
+    sqlconnectiondialog.ui \
+    insertsolverdialog.ui \
+    solverdialog.ui
