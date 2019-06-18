@@ -68,6 +68,19 @@ private:
 
 }
 
+int Solver1::getSolution(IVector* &vec) const {
+    if (!_curr) {
+        ILog::report("ISolver.getSolution: solution doesn't exist\n");
+        return ERR_ANY_OTHER;
+    }
+    IVector * sol = _curr->clone();
+    if (!sol) {
+        ILog::report("ISolver.getSolution: Cannot alloc memory for solution\n");
+        return ERR_MEMORY_ALLOCATION;
+    }
+    vec = sol;
+    return ERR_OK;
+}
 
 int Solver1::solve() {
     if (!_args || !_params) {
