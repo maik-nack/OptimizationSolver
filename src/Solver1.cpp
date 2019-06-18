@@ -1,5 +1,6 @@
 #include <new>
 #include <QFile>
+#include <cmath>
 
 #include "ILog.h"
 #include "IBrocker.h"
@@ -81,7 +82,7 @@ int Solver1::getId() const {
     return ISolver::INTERFACE_0;
 }
 
-int Solver1::setProblem(IProblem * ptr) const {
+int Solver1::setProblem(IProblem * ptr) {
     if (!ptr) {
         ILog::report("ISolver.setProblem: Input parameter ptr is nullptr\n");
         return ERR_WRONG_PROBLEM;
