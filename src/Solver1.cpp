@@ -4,6 +4,7 @@
 #include "ILog.h"
 #include "IBrocker.h"
 #include "ISolver.h"
+#include "IProblem.h"
 #include "ICompact.h"
 
 namespace {
@@ -34,6 +35,7 @@ private:
    bool solveByArgs;
    double eps;
    IVector * _prev, * _next;
+   IProblem * _problem;
 
 };
 
