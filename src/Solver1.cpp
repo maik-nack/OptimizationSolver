@@ -3,6 +3,7 @@
 #include <cmath>
 #include <QRegExp>
 #include <QString>
+#include <QStringList>
 
 #include "ILog.h"
 #include "IBrocker.h"
@@ -37,7 +38,7 @@ private:
    ICompact * _compact;
    bool solveByArgs;
    double eps;
-   IVector * _prev, * _next;
+   IVector * _prev, * _curr;
    IProblem * _problem;
 
 };
@@ -68,15 +69,275 @@ private:
 }
 
 
+int Solver1::solve() {
+    if (!_args || !_params) {
+        ILog::report("ISolver.solve: initial approximation is nullptr\n");
+        return ERR_WRONG_ARG;
+    }
+
+    if (!_compact) {
+        ILog::report("ISolver.solve: compact is nullptr\n");
+        return ERR_WRONG_ARG;
+    }
+
+    if(!_problem) {
+        ILog::report("ISolver.solve: problem is nullptr\n");
+        return ERR_WRONG_ARG;
+    }
+
+    if (solveByArgs) {
+        if(_problem->setParams(_params) != ERR_OK) {
+            ILog::report("ISolver.solve: error with setting params to problem\n");
+            return ERR_ANY_OTHER;
+        }
+
+        _curr = _args->clone();
+
+        if (!_curr) {
+            ILog::report("ISolver.solve: not enough memory\n");
+            return ERR_MEMORY_ALLOCATION;
+        }
+
+        while (true) {
+            size_t argsDim;
+
+            if (_problem->getArgsDim(argsDim) != ERR_OK) {
+                ILog::report("ISolver.solve: error with getArgsDim\n");
+                return ERR_ANY_OTHER;
+            }
+
+            double *gradD = new (std::nothrow) double[argsDim];
+
+            if (!gradD) {
+                ILog::report("ISolver.solve: not enough memory\n");
+                return ERR_MEMORY_ALLOCATION;
+            }
+
+            for (size_t i = 0; i < argsDim; i++) {
+                if (_problem->derivativeGoalFunctionByArgs(1,
+                                                           i,
+                                                           IProblem::BY_ARGS,
+                                                           gradD[i],
+                                                           _curr) != ERR_OK) {
+                    ILog::report("ISolver.solve: error with derivativeGoalFunctionByArgs\n");
+                    delete[] gradD;
+                    return ERR_ANY_OTHER;
+                }
+            }
+
+            IVector *gradV = IVector::createVector(argsDim, gradD);
+
+            if (!gradV) {
+                ILog::report("ISolver.solve: not enough memory\n");
+                delete[] gradD;
+                return ERR_MEMORY_ALLOCATION;
+            }
+
+            delete[] gradD;
+
+            double alpha = 1, lambda = 0.8;
+
+            while (true) {
+                IVector *tmpMS = IVector::multiplyByScalar(gradV, alpha);
+
+                if (!tmpMS) {
+                    ILog::report("ISolver.solve: error with multiplyByScalar\n");
+                    delete gradV;
+                    return ERR_ANY_OTHER;
+                }
+
+                IVector *tmpS = IVector::subtract(_curr, tmpMS);
+
+                if (!tmpS) {
+                    ILog::report("ISolver.solve: error with subtract\n");
+                    delete gradV;
+                    delete tmpMS;
+                    return ERR_ANY_OTHER;
+                }
+
+                IVector *prS;
+
+                if (_compact->getNearestNeighbor(tmpS, prS) != ERR_OK) {
+                    ILog::report("ISolver.solve: error with getNearestNeighbor\n");
+                    delete gradV;
+                    delete tmpMS;
+                    delete tmpS;
+                    return ERR_ANY_OTHER;
+                }
+
+                double resS, resC;
+
+                if (_problem->goalFunctionByArgs(prS, resS) != ERR_OK) {
+                    ILog::report("ISolver.solve: error with goalFunctionByArgs\n");
+                    delete gradV;
+                    delete tmpMS;
+                    delete tmpS;
+                    delete prS;
+                    return ERR_ANY_OTHER;
+                }
+
+                if (_problem->goalFunctionByArgs(_curr, resC) != ERR_OK) {
+                    ILog::report("ISolver.solve: error with goalFunctionByArgs\n");
+                    delete gradV;
+                    delete tmpMS;
+                    delete tmpS;
+                    delete prS;
+                    return ERR_ANY_OTHER;
+                }
+
+                if (resS < resC) {
+                    delete _prev;
+                    _prev = _curr;
+                    _curr = prS;
+                    break;
+                } else {
+                    alpha *= lambda;
+                }
+
+                delete tmpMS;
+                delete tmpS;
+            }
+
+            delete gradV;
+
+            bool res = false;
+
+            if (_curr->eq(_prev, IVector::NORM_INF, res, eps))
+                break;
+        }
+    }
+    else {
+        if(_problem->setArgs(_args) != ERR_OK) {
+            ILog::report("ISolver.solve: error with setting args to problem\n");
+            return ERR_ANY_OTHER;
+        }
+
+        _curr = _args->clone();
+
+        if (!_curr) {
+            ILog::report("ISolver.solve: not enough memory\n");
+            return ERR_MEMORY_ALLOCATION;
+        }
+
+        while (true) {
+            size_t paramsDim;
+
+            if (_problem->getParamsDim(paramsDim) != ERR_OK) {
+                ILog::report("ISolver.solve: error with getParamsDim\n");
+                return ERR_ANY_OTHER;
+            }
+
+            double *gradD = new (std::nothrow) double[paramsDim];
+
+            if (!gradD) {
+                ILog::report("ISolver.solve: not enough memory\n");
+                return ERR_MEMORY_ALLOCATION;
+            }
+
+            for (size_t i = 0; i < paramsDim; i++) {
+                if (_problem->derivativeGoalFunctionByParams(1,
+                                                           i,
+                                                           IProblem::BY_PARAMS,
+                                                           gradD[i],
+                                                           _params) != ERR_OK) {
+                    ILog::report("ISolver.solve: error with derivativeGoalFunctionByParams\n");
+                    delete[] gradD;
+                    return ERR_ANY_OTHER;
+                }
+            }
+
+            IVector *gradV = IVector::createVector(paramsDim, gradD);
+
+            if (!gradV) {
+                delete[] gradD;
+                ILog::report("ISolver.solve: not enough memory\n");
+                return ERR_MEMORY_ALLOCATION;
+            }
+
+            delete[] gradD;
+
+            double alpha = 1, lambda = 0.8;
+
+            while (true) {
+                IVector *tmpMS = IVector::multiplyByScalar(gradV, alpha);
+
+                if (!tmpMS) {
+                    ILog::report("ISolver.solve: error with multiplyByScalar\n");
+                    delete gradV;
+                    return ERR_ANY_OTHER;
+                }
+
+                IVector *tmpS = IVector::subtract(_curr, tmpMS);
+
+                if (!tmpS) {
+                    ILog::report("ISolver.solve: error with subtract\n");
+                    delete gradV;
+                    delete tmpMS;
+                    return ERR_ANY_OTHER;
+                }
+
+                IVector *prS;
+
+                if (_compact->getNearestNeighbor(tmpS, prS) != ERR_OK) {
+                    ILog::report("ISolver.solve: error with getNearestNeighbor\n");
+                    delete gradV;
+                    delete tmpMS;
+                    delete tmpS;
+                    return ERR_ANY_OTHER;
+                }
+
+                double resS, resC;
+
+                if (_problem->goalFunctionByParams(prS, resS) != ERR_OK) {
+                    ILog::report("ISolver.solve: error with goalFunctionByArgs\n");
+                    delete gradV;
+                    delete tmpMS;
+                    delete tmpS;
+                    delete prS;
+                    return ERR_ANY_OTHER;
+                }
+
+                if (_problem->goalFunctionByParams(_curr, resC) != ERR_OK) {
+                    ILog::report("ISolver.solve: error with goalFunctionByArgs\n");
+                    delete gradV;
+                    delete tmpMS;
+                    delete tmpS;
+                    delete prS;
+                    return ERR_ANY_OTHER;
+                }
+
+                if (resS < resC) {
+                    delete _prev;
+                    _prev = _curr;
+                    _curr = prS;
+                    break;
+                } else {
+                    alpha *= lambda;
+                }
+
+                delete tmpMS;
+                delete tmpS;
+            }
+
+            delete gradV;
+
+            bool res = false;
+
+            if (_curr->eq(_prev, IVector::NORM_INF, res, eps))
+                break;
+        }
+    }
+}
+
 Solver1::Solver1():
-    _args(NULL), _params(NULL), _prev(NULL), _next(NULL), _compact(NULL)
+    _args(NULL), _params(NULL), _prev(NULL), _curr(NULL), _compact(NULL), _problem(NULL)
  {}
 
 Solver1::~Solver1() {
     delete _args;
     delete _params;
     delete _prev;
-    delete _next;
+    delete _curr;
     delete _compact;
 }
 
@@ -125,7 +386,7 @@ int Solver1::setParams(IVector const* params) {
     double epsilon;
     IVector * args, * param, * begin, * end;
     ICompact * compact;
-    if (params->getCoordsPtr(dim, static_cast<double const*&>(coords)) != ERR_OK) {
+    if (params->getCoordsPtr(dim, qobject_cast<double const*&>(coords)) != ERR_OK) {
         ILog::report("ISolver.setParams: Cannot get coords from params\n");
         return ERR_ANY_OTHER;
     }
@@ -164,32 +425,32 @@ int Solver1::setParams(IVector const* params) {
         ILog::report("ISolver.setParams: Wrong flag for solve by arguments\n");
         return ERR_WRONG_ARG;
     }
-    solveByArg = static_cast<bool>(tmp);
+    solveByArg = qobject_cast<bool>(tmp);
     tmp = dimArgs + dimParams + 4;
     if ((solveByArg && dim != tmp + 2 * dimArgs) || (!solveByArg && dim != tmp + 2 * dimParams)) {
         ILog::report("ISolver.setParams: Dimension of params is wrong\n");
         return ERR_WRONG_PROBLEM;
     }
     dim = solveByArg ? dimArgs : dimParams;
-    args = IVector::createVector(dimArgs, static_cast<double const*&>(coords + 4));
+    args = IVector::createVector(dimArgs, qobject_cast<double const*&>(coords + 4));
     if (!args) {
         ILog::report("ISolver.setParams: Canntot alloc memory for arguments\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    param = IVector::createVector(dimParams, static_cast<double const*&>(coords + 4 + dimArgs));
+    param = IVector::createVector(dimParams, qobject_cast<double const*&>(coords + 4 + dimArgs));
     if (!param) {
         delete args;
         ILog::report("ISolver.setParams: Canntot alloc memory for parameters\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    begin = IVector::createVector(dim, static_cast<double const*&>(coords + tmp));
+    begin = IVector::createVector(dim, qobject_cast<double const*&>(coords + tmp));
     if (!begin) {
         delete args;
         delete params;
         ILog::report("ISolver.setParams: Canntot alloc memory for begin of compact\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    end = IVector::createVector(dim, static_cast<double const*&>(coords + tmp + dim));
+    end = IVector::createVector(dim, qobject_cast<double const*&>(coords + tmp + dim));
     if (!end) {
         delete args;
         delete params;
@@ -301,12 +562,12 @@ int Solver1::setParams(QString & str) {
         ILog::report("ISolver.setParams: Wrong string for solve by arguments or parameters\n");
         return ERR_WRONG_ARG;
     }
-    if (params.count() != dimArgs + dimParams + 4 + 2 * max(dimArgs, dimParams)) {
+    if (params.count() != dimArgs + dimParams + 4 + 2 * std::max(dimArgs, dimParams)) {
         ILog::report("ISolver.setParams: Count of params is wrong\n");
         return ERR_WRONG_PROBLEM;
     }
     dim = solveByArg ? dimArgs : dimParams;
-    coords = new (std::nothrow) double[max(dimArgs, dimParams)];
+    coords = new (std::nothrow) double[std::max(dimArgs, dimParams)];
     if (!coords) {
         ILog::report("ISolver.setParams: Canntot alloc memory\n");
         return ERR_MEMORY_ALLOCATION;
@@ -320,7 +581,7 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    args = IVector::createVector(dimArgs, static_cast<double const*&>(coords));
+    args = IVector::createVector(dimArgs, qobject_cast<double const*&>(coords));
     if (!args) {
         delete coords;
         ILog::report("ISolver.setParams: Canntot alloc memory for arguments\n");
@@ -336,7 +597,7 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    param = IVector::createVector(dimParams, static_cast<double const*&>(coords));
+    param = IVector::createVector(dimParams, qobject_cast<double const*&>(coords));
     if (!param) {
         delete coords;
         delete args;
@@ -349,36 +610,36 @@ int Solver1::setParams(QString & str) {
         if (!ok) {
             delete coords;
             delete args;
-            delete params;
+            delete param;
             ILog::report("ISolver.setParams: Cannot get begin of compact\n");
             return ERR_ANY_OTHER;
         }
     }
-    begin = IVector::createVector(dim, static_cast<double const*&>(coords));
+    begin = IVector::createVector(dim, qobject_cast<double const*&>(coords));
     if (!begin) {
         delete coords;
         delete args;
-        delete params;
+        delete param;
         ILog::report("ISolver.setParams: Canntot alloc memory for begin of compact\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    tmp += max(dimArgs, dimParams);
+    tmp += std::max(dimArgs, dimParams);
     for (int i = 0; i < dim; ++i) {
         coords[i] = params.at(i + tmp2).toDouble(&ok);
         if (!ok) {
             delete coords;
             delete args;
-            delete params;
+            delete param;
             delete begin;
             ILog::report("ISolver.setParams: Cannot get end of compact\n");
             return ERR_ANY_OTHER;
         }
     }
-    end = IVector::createVector(dim, static_cast<double const*&>(coords));
+    end = IVector::createVector(dim, qobject_cast<double const*&>(coords));
     if (!end) {
         delete coords;
         delete args;
-        delete params;
+        delete param;
         delete begin;
         ILog::report("ISolver.setParams: Canntot alloc memory for end of compact\n");
         return ERR_MEMORY_ALLOCATION;
@@ -387,7 +648,7 @@ int Solver1::setParams(QString & str) {
     compact = ICompact::createCompact(begin, end);
     if (!compact) {
         delete args;
-        delete params;
+        delete param;
         delete begin;
         delete end;
         ILog::report("ISolver.setParams: Canntot alloc memory for compact\n");
