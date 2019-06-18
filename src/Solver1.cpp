@@ -81,6 +81,36 @@ int Solver1::getId() const {
     return ISolver::INTERFACE_0;
 }
 
+int Solver1::setProblem(IProblem * ptr) const {
+    if (!ptr) {
+        ILog::report("ISolver.setProblem: Input parameter ptr is nullptr\n");
+        return ERR_WRONG_PROBLEM;
+    }
+    unsigned dim;
+    if (_args) {
+        if (ptr->getArgsDim(dim) != ERR_OK) {
+            ILog::report("ISolver.setProblem: Cannot check dimensions of arguments\n");
+            return ERR_ANY_OTHER;
+        }
+        if (_args->getDim() != dim) {
+            ILog::report("ISolver.setProblem: Dimensions of arguments mismatch\n");
+            return ERR_WRONG_PROBLEM;
+        }
+    }
+    if (_params) {
+        if (ptr->getParamsDim(dim) != ERR_OK) {
+            ILog::report("ISolver.setProblem: Cannot check dimensions of parameters\n");
+            return ERR_ANY_OTHER;
+        }
+        if (_params->getDim() != dim) {
+            ILog::report("ISolver.setProblem: Dimensions of parameters mismatch\n");
+            return ERR_WRONG_PROBLEM;
+        }
+    }
+    _problem = ptr;
+    return ERR_OK;
+}
+
 int Brocker2::getId() const {
     return IBrocker::INTERFACE_0;
 }
