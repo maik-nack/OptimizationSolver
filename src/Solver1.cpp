@@ -231,7 +231,7 @@ int Solver1::solve() {
             return ERR_ANY_OTHER;
         }
 
-        _curr = _args->clone();
+        _curr = _params->clone();
 
         if (!_curr) {
             ILog::report("ISolver.solve: not enough memory\n");
@@ -258,7 +258,7 @@ int Solver1::solve() {
                                                            i,
                                                            IProblem::BY_PARAMS,
                                                            gradD[i],
-                                                           _params) != ERR_OK) {
+                                                           _curr) != ERR_OK) {
                     ILog::report("ISolver.solve: error with derivativeGoalFunctionByParams\n");
                     delete[] gradD;
                     return ERR_ANY_OTHER;
@@ -628,7 +628,7 @@ int Solver1::setParams(QString & str) {
         ILog::report("ISolver.setParams: Canntot alloc memory for parameters\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    tmp += dimParams;
+    tmp2 += dimParams;
     for (unsigned i = 0; i < dim; ++i) {
         coords[i] = params.at(i + tmp2).toDouble(&ok);
         if (!ok) {
@@ -647,7 +647,7 @@ int Solver1::setParams(QString & str) {
         ILog::report("ISolver.setParams: Canntot alloc memory for begin of compact\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    tmp += std::max(dimArgs, dimParams);
+    tmp2 += std::max(dimArgs, dimParams);
     for (unsigned i = 0; i < dim; ++i) {
         coords[i] = params.at(i + tmp2).toDouble(&ok);
         if (!ok) {
