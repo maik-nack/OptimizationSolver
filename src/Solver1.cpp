@@ -1,5 +1,6 @@
 #include <new>
 #include <QFile>
+#include <QDir>
 #include <cmath>
 #include <QRegExp>
 #include <QString>
@@ -198,7 +199,7 @@ int Solver1::solve() {
                     return ERR_ANY_OTHER;
                 }
 
-                if (resS < resC) {
+                if (resS <= resC) {
                     delete _prev;
                     _prev = _curr;
                     _curr = prS;
@@ -215,7 +216,11 @@ int Solver1::solve() {
 
             bool res = false;
 
-            if (_curr->eq(_prev, IVector::NORM_INF, res, eps))
+            if (_curr->eq(_prev, IVector::NORM_INF, res, eps) != ERR_OK) {
+                ILog::report("ISolver.solve: cannot compare two vectors\n");
+                return ERR_ANY_OTHER;
+            }
+            if (res)
                 break;
         }
     }
@@ -319,7 +324,7 @@ int Solver1::solve() {
                     return ERR_ANY_OTHER;
                 }
 
-                if (resS < resC) {
+                if (resS <= resC) {
                     delete _prev;
                     _prev = _curr;
                     _curr = prS;
@@ -336,7 +341,11 @@ int Solver1::solve() {
 
             bool res = false;
 
-            if (_curr->eq(_prev, IVector::NORM_INF, res, eps))
+            if (_curr->eq(_prev, IVector::NORM_INF, res, eps) != ERR_OK) {
+                ILog::report("ISolver.solve: cannot compare two vectors\n");
+                return ERR_ANY_OTHER;
+            }
+            if (res)
                 break;
         }
     }
@@ -686,7 +695,7 @@ int Brocker2::getId() const {
 }
 
 int Solver1::getQml(QUrl& qml) const {
-    QString file = "qrc:/solver1.qml";
+    QString file = QDir::currentPath() + "/" + "solver1.qml";
     if (!QFile::exists(file))
         return ERR_ANY_OTHER;
     qml = QUrl::fromLocalFile(file);

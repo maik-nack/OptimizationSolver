@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>solver1.qml</file>
-    </qresource>
-</RCC>
