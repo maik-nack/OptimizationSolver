@@ -199,50 +199,50 @@ void Controller::on_insButton_clicked()
     delete model;
 }
 
+void release(IBrocker * problem_brocker, IBrocker * solver_brocker)
+{
+    problem_brocker->release();
+    solver_brocker->release();
+}
+
+bool Controller::getBrockerFunc(QString text, get_brocker_func & func, QString type)
+{
+    QFileInfo fileInfo(text);
+    if (!fileInfo.exists()) {
+        QMessageBox::critical(this, tr("File doesn't exist"), tr("File with ") + type + tr(" doesn't exist."));
+        return false;
+    }
+
+    QLibrary lib(fileInfo.absoluteFilePath(), this);
+    if (!lib.load()) {
+        QMessageBox::critical(this, tr("Library with ") + type + tr(" failed to load:"), lib.errorString());
+        return false;
+    }
+
+    func = reinterpret_cast<get_brocker_func>(lib.resolve("getBrocker"));
+    if (!func) {
+        QMessageBox::critical(this, tr("getBrocker wasn't resolved"),
+                              tr("Failed to get function getBrocker from library with ") + type + ".");
+        return false;
+    }
+
+    return true;
+}
+
 void Controller::on_solveButton_clicked()
 {
-    QFileInfo problemInfo(editProblem->text());
-    if (!problemInfo.exists()) {
-        emit statusMessage(tr("File with problem doesn't exist."));
-        return;
-    }
     QItemSelectionModel *select = table->selectionModel();
     if (!select || select->selectedRows().count() != 1) {
-        emit statusMessage(tr("Solver aren't selected."));
-        return;
-    }
-    QModelIndex index = select->selectedRows(2).at(0);
-    QFileInfo solverInfo(index.data().toString());
-    if (!solverInfo.exists()) {
-        emit statusMessage(tr("File with solver doesn't exist."));
-        return;
-    }
-
-    QLibrary libProblem(problemInfo.absoluteFilePath(), NULL);
-    if (!libProblem.load()) {
-        QMessageBox::critical(this, tr("Library with problem failed to load:"), libProblem.errorString());
-        return;
-    }
-
-    QLibrary libSolver(solverInfo.absoluteFilePath(), NULL);
-    if (!libSolver.load()) {
-        QMessageBox::critical(this, tr("Library with solver failed to load:"), libSolver.errorString());
+        QMessageBox::critical(this, tr("No solver"), tr("Solver isn't selected."));
         return;
     }
 
     get_brocker_func problem_brocker_func = NULL, solver_brocker_func = NULL;
-    problem_brocker_func = reinterpret_cast<get_brocker_func>(libProblem.resolve("getBrocker"));
-    if (!problem_brocker_func) {
-        QMessageBox::critical(this, tr("getBrocker wasn't resolved"),
-                              tr("Failed to get function getBrocker from library with problem."));
+    if (!getBrockerFunc(editProblem->text(), problem_brocker_func, "problem"))
         return;
-    }
-    solver_brocker_func = reinterpret_cast<get_brocker_func>(libSolver.resolve("getBrocker"));
-    if (!solver_brocker_func) {
-        QMessageBox::critical(this, tr("getBrocker wasn't resolved"),
-                              tr("Failed to get function getBrocker from library with solver."));
+    if (!getBrockerFunc(select->selectedRows(2).at(0).data().toString(),
+                        solver_brocker_func, "solver"))
         return;
-    }
 
     IBrocker * problem_brocker = NULL, * solver_brocker = NULL;
     IProblem * problem = NULL;
@@ -282,31 +282,27 @@ void Controller::on_solveButton_clicked()
     }
 
     if (solver->setProblem(problem) != ERR_OK) {
-        problem_brocker->release();
-        solver_brocker->release();
+        release(problem_brocker, solver_brocker);
         QMessageBox::critical(this, tr("Failed to set problem"),
                               tr("Failed to set problem to solver."));
         return;
     }
     QUrl url;
     if (solver->getQml(url) != ERR_OK) {
-        problem_brocker->release();
-        solver_brocker->release();
+        release(problem_brocker, solver_brocker);
         QMessageBox::critical(this, tr("Failed to get dialog"),
                               tr("Failed to get dialog from solver for setting parameters."));
         return;
     }
     unsigned int dimArgs, dimParams;
     if (problem->getArgsDim(dimArgs) != ERR_OK) {
-        problem_brocker->release();
-        solver_brocker->release();
+        release(problem_brocker, solver_brocker);
         QMessageBox::critical(this, tr("Failed to get dimension"),
                               tr("Failed to get dimension of arguments from problem. Plot cannot be drawn."));
         return;
     }
     if (problem->getParamsDim(dimParams) != ERR_OK) {
-        problem_brocker->release();
-        solver_brocker->release();
+        release(problem_brocker, solver_brocker);
         QMessageBox::critical(this, tr("Failed to get dimension"),
                               tr("Failed to get dimension of parameters from problem. Plot cannot be drawn."));
         return;
@@ -314,22 +310,19 @@ void Controller::on_solveButton_clicked()
     SolverParams sp(dimArgs, dimParams);
     SolverDialog dialog(url, &sp, this);
     if (dialog.exec() != QDialog::Accepted) {
-        problem_brocker->release();
-        solver_brocker->release();
+        release(problem_brocker, solver_brocker);
         return;
     }
     bool solveByArgs;
     if (dialog.isSolveByArgs(solveByArgs) != ERR_OK) {
-        problem_brocker->release();
-        solver_brocker->release();
+        release(problem_brocker, solver_brocker);
         QMessageBox::critical(this, tr("Failed to get data from dialog"),
                               tr("Failed to get data from dialog."));
         return;
     }
     QString s = dialog.getParameters();
     if (solver->setParams(s) != ERR_OK) {
-        problem_brocker->release();
-        solver_brocker->release();
+        release(problem_brocker, solver_brocker);
         QMessageBox::critical(this, tr("Failed to set parameters"),
                               tr("Failed to set parameters to solver."));
         return;
@@ -337,8 +330,7 @@ void Controller::on_solveButton_clicked()
     QMessageBox::information(this, tr("Solution begins"),
                           tr("Solution begins. This may take some time. So, don't worry."));
     if (solver->solve() != ERR_OK) {
-        problem_brocker->release();
-        solver_brocker->release();
+        release(problem_brocker, solver_brocker);
         QMessageBox::critical(this, tr("Failed to solve problem"),
                               tr("Solver couldn't solve the problem. See log."));
         return;
@@ -369,11 +361,11 @@ void Controller::on_drawButton_clicked()
     unsigned int dim = spinAxis->maximum();
 
     if (axis == 0) {
-        emit statusMessage(tr("Not supported axis."));
+        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Not supported axis."));
         return;
     }
     if (a > b) {
-        emit statusMessage(tr("Bad borders."));
+        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Bad borders."));
         return;
     }
 
@@ -386,24 +378,24 @@ void Controller::on_drawButton_clicked()
     QVector<double> px(1), py(1);
     double * vector = new (std::nothrow) double[dim];
     if (!vector) {
-        emit statusMessage(tr("Failed to alloc memory."));
+        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to alloc memory."));
         return;
     }
     IVector * solution = IVector::createVector(dim, vector);
     delete[] vector;
     if (!solution) {
-        emit statusMessage(tr("Failed to alloc memory for solution."));
+        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to alloc memory for solution."));
         return;
     }
     if (_solver->getSolution(solution) != ERR_OK) {
         delete solution;
-        emit statusMessage(tr("Failed to get solution from solver."));
+        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to get solution from solver."));
         return;
     }
     IVector * iter = solution->clone();
     if (!iter) {
         delete solution;
-        emit statusMessage(tr("Failed to alloc memory."));
+        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to alloc memory."));
         return;
     }
 
@@ -414,7 +406,7 @@ void Controller::on_drawButton_clicked()
         if ((_solve_by_args && _problem->goalFunctionByArgs(iter, y[i]) != ERR_OK) || _problem->goalFunctionByParams(iter, y[i]) != ERR_OK) {
             delete solution;
             delete iter;
-            emit statusMessage(tr("Failed to get value of goal function."));
+            QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to get value of goal function."));
             return;
         }
         i++;
@@ -422,12 +414,12 @@ void Controller::on_drawButton_clicked()
     delete iter;
     if (solution->getCoord(axis - 1, px[0]) != ERR_OK) {
         delete solution;
-        emit statusMessage(tr("Failed to get value of solution point."));
+        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to get value of solution point."));
         return;
     }
     if ((_solve_by_args && _problem->goalFunctionByArgs(solution, py[0]) != ERR_OK) || _problem->goalFunctionByParams(solution, py[0]) != ERR_OK) {
         delete solution;
-        emit statusMessage(tr("Failed to get value of goal function in the solution point."));
+        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to get value of goal function in the solution point."));
         return;
     }
     delete solution;
@@ -463,7 +455,7 @@ void Controller::on_drawButton_clicked()
 
 void Controller::on_saveImageButton_clicked()
 {
-    QString fileName = QFileDialog::getSaveFileName(this, "Select file with problem", "", "PNG (*.png)");
+    QString fileName = QFileDialog::getSaveFileName(this, "Select file for saving", "", "PNG (*.png)");
     QFile file(fileName);
 
     if (!file.open(QIODevice::WriteOnly))
@@ -471,6 +463,6 @@ void Controller::on_saveImageButton_clicked()
         emit statusMessage(file.errorString());
     } else {
         plot->savePng(fileName);
-        emit statusMessage(tr("Image saved in %1.").arg(fileName));
+        QMessageBox::information(this, tr("Image saving"), tr("Image saved in %1.").arg(fileName));
     }
 }

@@ -2,7 +2,6 @@
 #define CONTROLLER_H
 
 #include <QWidget>
-#include <QDebug>
 
 #include "ui_controller.h"
 #include "IBrocker.h"
@@ -49,6 +48,7 @@ private:
 
     void updateActions();
     bool select();
+    bool getBrockerFunc(QString text, get_brocker_func & func, QString type);
 
 };
 
