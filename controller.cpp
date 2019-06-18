@@ -358,7 +358,6 @@ void Controller::on_drawButton_clicked()
     double b = spinRightBorder->text().toDouble();
     double h = 0.01, ah = (b - a) / (INT_MAX - 2);
     int N = (b - a) / h + 2, i = 0;
-    unsigned int dim = spinAxis->maximum();
 
     if (axis == 0) {
         QMessageBox::critical(this, tr("Failed to draw plot"), tr("Not supported axis."));

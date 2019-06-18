@@ -1,6 +1,8 @@
 #include <QtCore>
 #include <QtGui>
 #include <QtSql>
+#include <signal.h>
+#include <unistd.h>
 
 #include "controller.h"
 #include "ILog.h"
@@ -18,6 +20,10 @@ void addConnectionsFromCommandline(const QStringList &args, Controller *controll
         if (err.type() != QSqlError::NoError)
             qDebug() << "Unable to open connection:" << err;
     }
+}
+
+void closeLog(int sig) {
+    ILog::destroy();
 }
 
 int main(int argc, char *argv[])
@@ -43,6 +49,9 @@ int main(int argc, char *argv[])
     w.show();
     if (QSqlDatabase::connectionNames().isEmpty())
         QMetaObject::invokeMethod(&c, "changeConnection", Qt::QueuedConnection);
+
+    signal(SIGTERM, closeLog);
+    signal(SIGINT, closeLog);
 
     return a.exec();
 }
