@@ -112,6 +112,112 @@ int Solver1::setProblem(IProblem * ptr) {
     return ERR_OK;
 }
 
+int Solver1::setParams(IVector const* params) {
+    if (!params) {
+        ILog::report("ISolver.setParams: Input parameter ptr is nullptr\n");
+        return ERR_WRONG_ARG;
+    }
+    unsigned int dim, dimArgs, dimParams, tmp;
+    double * coords;
+    bool solveByArg;
+    double epsilon;
+    IVector * args, * param, * begin, * end;
+    ICompact * compact;
+    if (params->getCoordsPtr(dim, dynamic_cast<double const*&>(coords)) != ERR_OK) {
+        ILog::report("ISolver.setParams: Cannot get coords from params\n");
+        return ERR_ANY_OTHER;
+    }
+    if (dim < 4) {
+        ILog::report("ISolver.setParams: Dimension of params less than 4\n");
+        return ERR_WRONG_ARG;
+    }
+    if (_problem) {
+        if (_problem->getArgsDim(dimArgs) != ERR_OK) {
+            ILog::report("ISolver.setParams: Cannot check dimensions of arguments\n");
+            return ERR_ANY_OTHER;
+        }
+        if (_problem->getParamsDim(dimParams) != ERR_OK) {
+            ILog::report("ISolver.setParams: Cannot check dimensions of parameters\n");
+            return ERR_ANY_OTHER;
+        }
+        if (round(coords[0]) != dimArgs) {
+            ILog::report("ISolver.setParams: Dimensions of arguments mismatch\n");
+            return ERR_WRONG_ARG;
+        }
+        if (round(coords[1]) != dimParams) {
+            ILog::report("ISolver.setParams: Dimensions of parameters mismatch\n");
+            return ERR_WRONG_ARG;
+        }
+    } else {
+        dimArgs = round(coords[0]);
+        dimParams = round(coords[1]);
+    }
+    epsilon = coords[2];
+    if (epsilon <= 0) {
+        ILog::report("ISolver.setParams: Epsilon is negative\n");
+        return ERR_WRONG_ARG;
+    }
+    tmp = round(coords[3]);
+    if (tmp != 1 || tmp != 0) {
+        ILog::report("ISolver.setParams: Wrong flag for solve by arguments\n");
+        return ERR_WRONG_ARG;
+    }
+    solveByArg = static_cast<bool>(tmp);
+    tmp = dimArgs + dimParams + 4;
+    if ((solveByArg && dim != tmp + 2 * dimArgs) || (!solveByArg && dim != tmp + 2 * dimParams)) {
+        ILog::report("ISolver.setParams: Dimension of params is wrong\n");
+        return ERR_WRONG_PROBLEM;
+    }
+    dim = solveByArg ? dimArgs : dimParams;
+    args = IVector::createVector(dimArgs, dynamic_cast<double const*&>(coords + 4));
+    if (!args) {
+        ILog::report("ISolver.setParams: Canntot alloc memory for arguments\n");
+        return ERR_MEMORY_ALLOCATION;
+    }
+    param = IVector::createVector(dimParams, dynamic_cast<double const*&>(coords + 4 + dimArgs));
+    if (!param) {
+        delete args;
+        ILog::report("ISolver.setParams: Canntot alloc memory for parameters\n");
+        return ERR_MEMORY_ALLOCATION;
+    }
+    begin = IVector::createVector(dim, dynamic_cast<double const*&>(coords + tmp));
+    if (!begin) {
+        delete args;
+        delete params;
+        ILog::report("ISolver.setParams: Canntot alloc memory for begin of compact\n");
+        return ERR_MEMORY_ALLOCATION;
+    }
+    end = IVector::createVector(dim, dynamic_cast<double const*&>(coords + tmp + dim));
+    if (!end) {
+        delete args;
+        delete params;
+        delete begin;
+        ILog::report("ISolver.setParams: Canntot alloc memory for end of compact\n");
+        return ERR_MEMORY_ALLOCATION;
+    }
+    compact = ICompact::createCompact(begin, end);
+    if (!compact) {
+        delete args;
+        delete params;
+        delete begin;
+        delete end;
+        ILog::report("ISolver.setParams: Canntot alloc memory for compact\n");
+        return ERR_MEMORY_ALLOCATION;
+    }
+    delete begin;
+    delete end;
+    delete _args;
+    delete _params;
+    delete _compact;
+    _args = args;
+    _params = param;
+    _compact = compact;
+    solveByArgs = solveByArg;
+    eps = epsilon;
+    return ERR_OK;
+}
+
+
 int Brocker2::getId() const {
     return IBrocker::INTERFACE_0;
 }
