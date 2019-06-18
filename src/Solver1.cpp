@@ -5,62 +5,61 @@
 #include "ISolver.h"
 #include "ICompact.h"
 
- namespace {
+namespace {
 
- class Solver1 : public ISolver {
+class Solver1 : public ISolver {
 
- public:
+public:
 
-    int getId() const;
+   int getId() const;
 
-    int setParams(IVector const* params);
-    int setParams(QString& str);
-    int setProblem(IProblem *ptr);
-    int solve();
-    int getSolution(IVector* &vec) const;
-    int getQml(QUrl& qml) const;
-
-     /*ctor*/
-    Solver1();
-
-     /*dtor*/
-    ~Solver1();
-
- private:
-
-    IVector * _args, * _params;
-    ICompact * _compact;
-    bool solveByArgs;
-    double eps;
-    IVector * _prev, * _next;
-
- };
-
- class Brocker2 : public IBrocker {
-
- public:
-
-    int getId() const;
-
-    bool canCastTo(Type type) const;
-    void* getInterfaceImpl(Type type) const;
-
-    int release();
+   int setParams(IVector const* params);
+   int setParams(QString& str);
+   int setProblem(IProblem *ptr);
+   int solve();
+   int getSolution(IVector* &vec) const;
+   int getQml(QUrl& qml) const;
 
      /*ctor*/
-    Brocker2(Solver1 *solver);
+   Solver1();
 
      /*dtor*/
-    ~Brocker2();
+   ~Solver1();
 
- private:
+private:
 
-     Solver1 *_solver;
+   IVector * _args, * _params;
+   ICompact * _compact;
+   bool solveByArgs;
+   double eps;
+   IVector * _prev, * _next;
 
- };
+};
 
- }
+class Brocker2 : public IBrocker {
 
+public:
+
+   int getId() const;
+
+   bool canCastTo(Type type) const;
+   void* getInterfaceImpl(Type type) const;
+
+   int release();
+
+     /*ctor*/
+   Brocker2(Solver1 *solver);
+
+     /*dtor*/
+   ~Brocker2();
+
+private:
+
+    Solver1 *_solver;
+
+};
+
+}
 
 
 Solver1::Solver1():
