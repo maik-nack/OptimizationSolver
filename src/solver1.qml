@@ -15,7 +15,7 @@ Rectangle
 
         Component.onCompleted:
         {
-            var i = 0, newText, h;
+            var i = 0, newText, h, d = Math.max(params.dimParams, params.dimArgs);
             for (i = 0; i < params.dimArgs; ++i) {
                 newText = Qt.createQmlObject('import QtQuick 1.0; Text{width: 100; text: "Arg' + (i+1) + '"}', grid, "");
                 h = newText.height;
@@ -26,10 +26,12 @@ Rectangle
                 h = newText.height;
                 Qt.createQmlObject('import QtQuick 1.0; Rectangle {border.width: 2; border.color: "black"; width: 200; height: ' + h + '; clip: true; TextInput {objectName: "b' + i + '"; width: parent.width - 4; anchors.horizontalCenter: parent.horizontalCenter; validator: DoubleValidator{}}}', grid, "");
             }
-            for (i = 0; i < Math.max(params.dimParams, params.dimArgs); ++i) {
+            for (i = 0; i < d; ++i) {
                 newText = Qt.createQmlObject('import QtQuick 1.0; Text{width: 100; text: "Left border ' + (i+1) + '"}', grid, "");
                 h = newText.height;
                 Qt.createQmlObject('import QtQuick 1.0; Rectangle {border.width: 2; border.color: "black"; width: 200; height: ' + h + '; clip: true; TextInput {objectName: "lb' + i + '"; width: parent.width - 4; anchors.horizontalCenter: parent.horizontalCenter; validator: DoubleValidator{}}}', grid, "");
+            }
+            for (i = 0; i < d; ++i) {
                 newText = Qt.createQmlObject('import QtQuick 1.0; Text{width: 100; text: "Right border ' + (i+1) + '"}', grid, "");
                 h = newText.height;
                 Qt.createQmlObject('import QtQuick 1.0; Rectangle {border.width: 2; border.color: "black"; width: 200; height: ' + h + '; clip: true; TextInput {objectName: "rb' + i + '"; width: parent.width - 4; anchors.horizontalCenter: parent.horizontalCenter; validator: DoubleValidator{}}}', grid, "");
