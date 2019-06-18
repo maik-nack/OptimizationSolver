@@ -35,7 +35,7 @@ class SolverDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit SolverDialog(const QUrl &source, const SolverParams *params, QWidget *parent = 0);
+    explicit SolverDialog(const QUrl &source, SolverParams * params, QWidget *parent = 0);
     ~SolverDialog();
 
     QString getParameters() const;
@@ -44,7 +44,7 @@ public:
 private:
     Ui::SolverDialogUi ui;
     QObject * root;
-    const SolverParams * params;
+    SolverParams * params;
 };
 
 #endif // SOLVERDIALOG_H

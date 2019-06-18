@@ -3,6 +3,7 @@
 #include <QtSql>
 
 #include "controller.h"
+#include "ILog.h"
 
 void addConnectionsFromCommandline(const QStringList &args, Controller *controller)
 {
@@ -22,6 +23,7 @@ void addConnectionsFromCommandline(const QStringList &args, Controller *controll
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    ILog::init("log.txt");
 
     QMainWindow w;
     w.setWindowTitle(QObject::tr("Optimization Solver"));

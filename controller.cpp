@@ -376,17 +376,7 @@ void Controller::on_drawButton_clicked()
 
     QVector<double> x(N), y(N);
     QVector<double> px(1), py(1);
-    double * vector = new (std::nothrow) double[dim];
-    if (!vector) {
-        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to alloc memory."));
-        return;
-    }
-    IVector * solution = IVector::createVector(dim, vector);
-    delete[] vector;
-    if (!solution) {
-        QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to alloc memory for solution."));
-        return;
-    }
+    IVector * solution = NULL;
     if (_solver->getSolution(solution) != ERR_OK) {
         delete solution;
         QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to get solution from solver."));
@@ -399,11 +389,17 @@ void Controller::on_drawButton_clicked()
         return;
     }
 
+    int ec;
     for (double X = a; X <= b; X += h)
     {
         iter->setCoord(axis - 1, X);
         x[i] = X;
-        if ((_solve_by_args && _problem->goalFunctionByArgs(iter, y[i]) != ERR_OK) || _problem->goalFunctionByParams(iter, y[i]) != ERR_OK) {
+        if (_solve_by_args) {
+            ec = _problem->goalFunctionByArgs(iter, y[i]);
+        } else {
+            ec = _problem->goalFunctionByParams(iter, y[i]);
+        }
+        if (ec != ERR_OK) {
             delete solution;
             delete iter;
             QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to get value of goal function."));
@@ -417,7 +413,12 @@ void Controller::on_drawButton_clicked()
         QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to get value of solution point."));
         return;
     }
-    if ((_solve_by_args && _problem->goalFunctionByArgs(solution, py[0]) != ERR_OK) || _problem->goalFunctionByParams(solution, py[0]) != ERR_OK) {
+    if (_solve_by_args) {
+        ec = _problem->goalFunctionByArgs(solution, py[0]);
+    } else {
+        ec = _problem->goalFunctionByParams(solution, py[0]);
+    }
+    if (ec != ERR_OK) {
         delete solution;
         QMessageBox::critical(this, tr("Failed to draw plot"), tr("Failed to get value of goal function in the solution point."));
         return;

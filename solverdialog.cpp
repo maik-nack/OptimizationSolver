@@ -1,11 +1,12 @@
 #include <QDeclarativeView>
 #include <QGraphicsObject>
 #include <QDeclarativeContext>
+#include <QVariant>
 #include <QList>
 
 #include "solverdialog.h"
 
-SolverDialog::SolverDialog(const QUrl &source, const SolverParams * params, QWidget *parent)
+SolverDialog::SolverDialog(const QUrl &source, SolverParams * params, QWidget *parent)
     : QDialog(parent)
 {
     ui.setupUi(this);
@@ -40,6 +41,7 @@ QString SolverDialog::getParameters() const
     foreach (QObject * val, children) {
         res.append(val->property("objectName").toString() + ":" + val->property("text").toString() + " ");
     }
+    res.remove(res.length() - 1, 1);
     return res;
 }
 
@@ -53,7 +55,8 @@ int SolverDialog::isSolveByArgs(bool &rc) const
     if (text.length() == 0) {
         return ERR_ANY_OTHER;
     }
-    return QRegExp("[Aa][Rr][Gg][Ss]").exactMatch(text);
+    rc = QRegExp("[Aa][Rr][Gg][Ss]").exactMatch(text);
+    return ERR_OK;
 }
 
 
