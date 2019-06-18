@@ -1,6 +1,3 @@
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
 #include <new>
 
 #include "ILog.h"
@@ -54,7 +51,7 @@ public:
     int release();
 
     /*ctor*/
-    Brocker1();
+    Brocker1(Problem1 *problem);
 
     /*dtor*/
     ~Brocker1();
@@ -306,8 +303,8 @@ int Brocker1::release() {
     return ERR_OK;
 }
 
-Brocker1::Brocker1():
-    _problem(new (std::nothrow) Problem1())
+Brocker1::Brocker1(Problem1 *problem):
+    _problem(problem)
 {}
 
 Brocker1::~Brocker1() {
@@ -316,6 +313,21 @@ Brocker1::~Brocker1() {
 
 extern "C" {
 SHARED_EXPORT void* getBrocker() {
-    return new (std::nothrow) Brocker1();
+    Problem1 *problem = new (std::nothrow) Problem1();
+
+    if (!problem) {
+        ILog::report("getBrocker: not enough memory\n");
+        return NULL;
+    }
+
+    Brocker1 *brocker = new (std::nothrow) Brocker1(problem);
+
+    if (!brocker) {
+        ILog::report("getBrocker: not enough memory\n");
+        delete problem;
+        return NULL;
+    }
+
+    return brocker;
 }
 }
