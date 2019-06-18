@@ -5,10 +5,7 @@ QMAKE_CXXFLAGS += -std=gnu++0x
 TARGET = optimization-solver
 TEMPLATE = app
 
-LIBS += "../optimization-solver-build-desktop/debug/log.dll"
-LIBS += "../optimization-solver-build-desktop/debug/vector.dll"
-LIBS += "../optimization-solver-build-desktop/debug/compact.dll"
-LIBS += "../optimization-solver-build-desktop/debug/set.dll"
+LIBS += debug/log.dll debug/vector.dll debug/compact.dll debug/set.dll
 
 SOURCES += main.cpp \
     controller.cpp \
