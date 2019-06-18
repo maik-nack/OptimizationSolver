@@ -125,7 +125,7 @@ int Solver1::setParams(IVector const* params) {
     double epsilon;
     IVector * args, * param, * begin, * end;
     ICompact * compact;
-    if (params->getCoordsPtr(dim, dynamic_cast<double const*&>(coords)) != ERR_OK) {
+    if (params->getCoordsPtr(dim, static_cast<double const*&>(coords)) != ERR_OK) {
         ILog::report("ISolver.setParams: Cannot get coords from params\n");
         return ERR_ANY_OTHER;
     }
@@ -171,25 +171,25 @@ int Solver1::setParams(IVector const* params) {
         return ERR_WRONG_PROBLEM;
     }
     dim = solveByArg ? dimArgs : dimParams;
-    args = IVector::createVector(dimArgs, dynamic_cast<double const*&>(coords + 4));
+    args = IVector::createVector(dimArgs, static_cast<double const*&>(coords + 4));
     if (!args) {
         ILog::report("ISolver.setParams: Canntot alloc memory for arguments\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    param = IVector::createVector(dimParams, dynamic_cast<double const*&>(coords + 4 + dimArgs));
+    param = IVector::createVector(dimParams, static_cast<double const*&>(coords + 4 + dimArgs));
     if (!param) {
         delete args;
         ILog::report("ISolver.setParams: Canntot alloc memory for parameters\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    begin = IVector::createVector(dim, dynamic_cast<double const*&>(coords + tmp));
+    begin = IVector::createVector(dim, static_cast<double const*&>(coords + tmp));
     if (!begin) {
         delete args;
         delete params;
         ILog::report("ISolver.setParams: Canntot alloc memory for begin of compact\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    end = IVector::createVector(dim, dynamic_cast<double const*&>(coords + tmp + dim));
+    end = IVector::createVector(dim, static_cast<double const*&>(coords + tmp + dim));
     if (!end) {
         delete args;
         delete params;
@@ -320,7 +320,7 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    args = IVector::createVector(dimArgs, dynamic_cast<double const*&>(coords));
+    args = IVector::createVector(dimArgs, static_cast<double const*&>(coords));
     if (!args) {
         delete coords;
         ILog::report("ISolver.setParams: Canntot alloc memory for arguments\n");
@@ -336,7 +336,7 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    param = IVector::createVector(dimParams, dynamic_cast<double const*&>(coords));
+    param = IVector::createVector(dimParams, static_cast<double const*&>(coords));
     if (!param) {
         delete coords;
         delete args;
@@ -354,7 +354,7 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    begin = IVector::createVector(dim, dynamic_cast<double const*&>(coords));
+    begin = IVector::createVector(dim, static_cast<double const*&>(coords));
     if (!begin) {
         delete coords;
         delete args;
@@ -374,7 +374,7 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    end = IVector::createVector(dim, dynamic_cast<double const*&>(coords));
+    end = IVector::createVector(dim, static_cast<double const*&>(coords));
     if (!end) {
         delete coords;
         delete args;
