@@ -2,8 +2,6 @@ QT       += core gui sql printsupport declarative
 
 QMAKE_CXXFLAGS += -std=gnu++0x
 
-QMAKE_CXXFLAGS += -std=gnu++0x
-
 TARGET = optimization-solver
 TEMPLATE = app
 
