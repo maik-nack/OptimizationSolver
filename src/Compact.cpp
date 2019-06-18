@@ -33,6 +33,7 @@ namespace {
 
 		static unsigned const MAX_POINTS_AMOUNT = UINT_MAX;
 		static unsigned const PRECISION_DIVIDER = 1000;
+		static double const DOUBLE_EPS = 1e-8;
 
 		unsigned _dim;						 // dimension of vectors in compact
 		unsigned _pointsAmount;				 // total amount of points in compact
@@ -53,8 +54,8 @@ namespace {
 		int isContains(IVector const* const vec, bool& result) const;
 		int isSubSet(ICompact const* const other) const;
 
-                IIterator* begin(IVector const* const step);
-                IIterator* end(IVector const* const step = 0);
+		IIterator* begin(IVector const* const step);
+		IIterator* end(IVector const* const step = 0);
 		int getByIterator(IIterator const* pIter, IVector*& pItem) const;
 		int deleteIterator(IIterator *pIter);
 
@@ -75,7 +76,26 @@ Compact* defaultSamplingCreate(IVector *begin, IVector *end, IVector *residual)
 	unsigned dim = begin->getDim();
 	unsigned defaultCounter = static_cast<unsigned>(pow(Compact::MAX_POINTS_AMOUNT, 1.0 / dim));
 	QVector<unsigned> samplingCounters(static_cast<int>(dim), defaultCounter);
-	if (residual->multiplyByScalar(1.0 / defaultCounter) != ERR_OK)
+	double scalar, residualNorm;
+	if (defaultCounter == 1)
+	{
+		if (residual->norm(IVector::NORM_INF, residualNorm) != ERR_OK)
+		{
+			ILog::report("defaultSamplingCreate: failed to calculate residual norm\n");
+			return nullptr;
+		}
+		if (residualNorm > Compact::DOUBLE_EPS)
+		{
+			ILog::report("defaultSamplingCreate: only one sampling point but different 'begin' and 'end'\n");
+			return nullptr;
+		}
+		scalar = 0.0;
+	}
+	else
+	{
+		scalar = 1.0 / (defaultCounter - 1);
+	}
+	if (residual->multiplyByScalar(scalar) != ERR_OK)
 	{
 		ILog::report("defaultSamplingCreate: failed to multiply residual by scalar\n");
 		return nullptr;
@@ -86,7 +106,7 @@ Compact* defaultSamplingCreate(IVector *begin, IVector *end, IVector *residual)
 Compact* nonDefaultSamplingCreate(IVector *begin, IVector *end, IVector *residual, IVector const *step)
 {
 	unsigned dim = begin->getDim();
-	double coord = 0.0, pointsAmount = 1.0, roundedCounter;
+	double coord = 0.0, coordBegin = 0.0, coordEnd = 0.0, pointsAmount = 1.0, roundedCounter;
 	QVector<unsigned> samplingCounters(static_cast<int>(dim));
 
 	// check sampling correctness
@@ -102,6 +122,37 @@ Compact* nonDefaultSamplingCreate(IVector *begin, IVector *end, IVector *residua
 			ILog::report("nonDefaultSamplingCreate: some of 'step' coordinates are less than 1.0\n");
 			return nullptr;
 		}
+		if (roundedCounter < 2.0)
+		{
+			if (begin->getCoord(i, coordBegin) != ERR_OK || end->getCoord(i, coordEnd) != ERR_OK)
+			{
+				ILog::report("nonDefaultSamplingCreate: failed to get coords from 'begin' or 'end' params\n");
+				return nullptr;
+			}
+			if (coordEnd - coordBegin > Compact::DOUBLE_EPS)
+			{
+				ILog::report("nondefaultSamplingCreate: only one sampling point but different 'begin' and 'end'\n");
+				return nullptr;
+			}
+			if (residual->setCoord(i, 0.0) != ERR_OK)
+			{
+				ILog::report("nonDefaultSamplingCreate: failed to set coord (0.0) to residual\n");
+				return nullptr;
+			}
+		}
+		else
+		{
+			if (residual->getCoord(i, coord) != ERR_OK)
+			{
+				ILog::report("nonDefaultSamplingCreate: failed to get coord from residual\n");
+				return nullptr;
+			}
+			if (residual->setCoord(i, coord / (roundedCounter - 1.0)) != ERR_OK)
+			{
+				ILog::report("nonDefaultSamplingCreate: failed to set coord to residual\n");
+				return nullptr;
+			}
+		}
 		samplingCounters[i] = static_cast<unsigned>(roundedCounter);
 		pointsAmount *= roundedCounter;
 	}
@@ -110,20 +161,6 @@ Compact* nonDefaultSamplingCreate(IVector *begin, IVector *end, IVector *residua
 		ILog::report("nonDefaultSamplingCreate: the amount of points is bigger than max amount\n");
 		return nullptr;
 	}// end check sampling correctness
-
-	for (unsigned i = 0; i < dim; i++)
-	{
-		if (residual->getCoord(i, coord) != ERR_OK)
-		{
-			ILog::report("nonDefaultSamplingCreate: failed to get coord from residual\n");
-			return nullptr;
-		}
-		if (residual->setCoord(i, coord / samplingCounters[i]) != ERR_OK)
-		{
-			ILog::report("nonDefaultSamplingCreate: failed to set coord to residual\n");
-			return nullptr;
-		}
-	}
 	return new(std::nothrow) Compact(begin, end, residual, samplingCounters);
 }// end nonDefaultSamplingCreate
 
@@ -378,34 +415,68 @@ int Compact::isSubSet(ICompact const* const other) const
 
 ICompact::IIterator* Compact::begin(IVector const* const step)
 {
+	CompactIterator *iterator;
 	IVector* stepClone;
-	if (!step || checkStepCorrectness(step) == ERR_OK)
+	if (!step)
 	{
-		if (!(stepClone = step->clone()))
+		iterator = new(std::nothrow) CompactIterator(this, 0);
+	}
+	else
+	{
+		if (checkStepCorrectness(step) != ERR_OK)
 		{
-			ILog::report("ICompact::_begin: failed to clone 'step' param\n");
+			ILog::report("ICompact::begin: not correct 'step' param\n");
 			return nullptr;
 		}
-		return new(std::nothrow) CompactIterator(this, 0, stepClone);
+		if (!(stepClone = step->clone()))
+		{
+			ILog::report("ICompact::begin: failed to clone 'step' param\n");
+			return nullptr;
+		}
+		iterator = new(std::nothrow) CompactIterator(this, 0, stepClone);
 	}
-	ILog::report("ICompact::_begin: not correct 'step' param\n");
-	return nullptr;
+	if (iterator)
+	{
+		_iterators.append(iterator);
+	}
+	else
+	{
+		ILog::report("ICompact::begin: failed to create iterator\n");
+	}
+	return iterator;
 }
 
 ICompact::IIterator* Compact::end(IVector const* const step)
 {
+	CompactIterator *iterator;
 	IVector* stepClone;
-	if (!step || checkStepCorrectness(step) == ERR_OK)
+	if (!step)
 	{
-		if (!(stepClone = step->clone()))
+		iterator = new(std::nothrow) CompactIterator(this, _pointsAmount - 1);
+	}
+	else
+	{
+		if (checkStepCorrectness(step) != ERR_OK)
 		{
-			ILog::report("ICompact::_end: failed to clone 'step' param\n");
+			ILog::report("ICompact::end: not correct 'step' param\n");
 			return nullptr;
 		}
-		return new(std::nothrow) CompactIterator(this, _pointsAmount - 1, stepClone);
+		if (!(stepClone = step->clone()))
+		{
+			ILog::report("ICompact::end: failed to clone 'step' param\n");
+			return nullptr;
+		}
+		iterator = new(std::nothrow) CompactIterator(this, _pointsAmount - 1, stepClone);
 	}
-	ILog::report("ICompact::_end: not correct 'step' param\n");
-	return nullptr;
+	if (iterator)
+	{
+		_iterators.append(iterator);
+	}
+	else
+	{
+		ILog::report("ICompact::end: failed to create iterator\n");
+	}
+	return iterator;
 }
 
 int Compact::getByIterator(IIterator const* pIter, IVector*& pItem) const
@@ -477,6 +548,11 @@ int Compact::checkStepCorrectness(IVector const *step) const
 	{
 		return ERR_WRONG_ARG;
 	}
+	if (step->getDim() != _dim)
+	{
+		ILog::report("checkStepCorrectness: dimensions mismatch in 'step' param\n");
+		return ERR_DIMENSIONS_MISMATCH;
+	}
 	for (unsigned i = 0; i < _dim; i++)
 	{
 		if ((errCode = step->getCoord(i, coordStep)) != ERR_OK)
@@ -488,9 +564,9 @@ int Compact::checkStepCorrectness(IVector const *step) const
 			return errCode;
 		}
 		/* if at least one of step coordinates is greather then half of sampling
-			value, than step is correct (otherwise step is too small and iteraror
-			isn't able to move) */
-		if (coordStep > samplingVal / 2.0)
+		   value, than step is correct (otherwise step is too small and iteraror
+		   isn't able to move) */
+		if (fabs(coordStep) > samplingVal / 2.0)
 		{
 			return ERR_OK;
 		}
@@ -503,7 +579,7 @@ int Compact::checkStepCorrectness(IVector const *step) const
 bool Compact::vectorPrecisionEquals(IVector const *v1, IVector const *v2) const
 {
 	double coord1 = 0.0, coord2 = 0.0, samplingVal = 0.0;
-	unsigned dimension;
+	unsigned dimension, dist;
 	if (!v1 || !v2)
 	{
 		return false;
@@ -524,7 +600,7 @@ bool Compact::vectorPrecisionEquals(IVector const *v1, IVector const *v2) const
 			ILog::report("vectorPrecisionEquals: failed to get coord from '_samplingValues'\n");
 			return false;
 		}
-		if (fabs(coord2 - coord1) > samplingVal / PRECISION_DIVIDER)
+		if ((dist = fabs(coord2 - coord1)) > samplingVal / PRECISION_DIVIDER || dist > DOUBLE_EPS)
 		{
 			return false;
 		}
@@ -574,10 +650,7 @@ int Compact::getIndexByPoint(IVector const* const vec, unsigned &result) const
 			ILog::report("getIndexByPoint: failed to get coord from 'vec' param\n");
 			return ERR_ANY_OTHER;
 		}
-		if (i > 0)
-		{
-			index *= (_samplingCounters)[i];
-		}
+		index *= _samplingCounters[i];
 		index += static_cast<unsigned>(round((coordVec - coordBegin) / samplingVal));
 	}
 	result = index;
@@ -708,7 +781,7 @@ int Compact::CompactIterator::doStep()
 		}
 		if (newPos == _pos)
 		{
-			ILog::report("ICompact::IIterator::doStep: step out of range (default behavour)\n");
+			ILog::report("ICompact::IIterator::doStep: step out of range (non-default behavour)\n");
 			errCode = ERR_OUT_OF_RANGE;
 		}
 		else
