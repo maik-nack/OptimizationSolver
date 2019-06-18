@@ -246,6 +246,7 @@ int Problem1::derivativeGoalFunction(size_t order,
         return ERR_OK;
 
     default:
+        ILog::report("IProblem.derivativeGoalFunction: Input argument dr is unknown\n");
         return ERR_WRONG_ARG;
     }
 }
