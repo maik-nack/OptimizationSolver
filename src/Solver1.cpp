@@ -1,6 +1,7 @@
 #include <new>
 #include <QFile>
 #include <QDir>
+#include <QFileInfo>
 #include <cmath>
 #include <QRegExp>
 #include <QString>
@@ -695,7 +696,8 @@ int Brocker2::getId() const {
 }
 
 int Solver1::getQml(QUrl& qml) const {
-    QString file = QDir::currentPath() + "/" + "solver1.qml";
+    QFileInfo dll(qml.path());
+    QString file = dll.absolutePath() + "/" + "solver1.qml";
     if (!QFile::exists(file))
         return ERR_ANY_OTHER;
     qml = QUrl::fromLocalFile(file);
