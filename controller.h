@@ -45,10 +45,10 @@ private:
     IBrocker * _problem_brocker, * _solver_brocker;
     IProblem * _problem;
     ISolver * _solver;
+    bool _solve_by_args;
 
     void updateActions();
     bool select();
-    bool checkTable(QSqlRecord record);
 
 };
 

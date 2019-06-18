@@ -8,6 +8,7 @@
 #include "controller.h"
 #include "sqlconnectiondialog.h"
 #include "insertsolverdialog.h"
+#include "solverdialog.h"
 
 Controller::Controller(QWidget *parent)
     : QWidget(parent)
@@ -27,12 +28,23 @@ Controller::Controller(QWidget *parent)
     _problem_brocker = _solver_brocker = NULL;
     _problem = NULL;
     _solver = NULL;
+    _solve_by_args = true;
 }
 
 Controller::~Controller()
 {
     if (_problem_brocker) _problem_brocker->release();
     if (_solver_brocker) _solver_brocker->release();
+}
+
+bool checkTable(QSqlRecord record)
+{
+    static QString fields[3] = {"Name", "Description", "Path"};
+    if (record.count() != 3) return false;
+    for (int i = 0; i < 3; ++i)
+        if (record.field(i).type() != QVariant::String
+                || record.field(i).name().compare(fields[i])) return false;
+    return true;
 }
 
 void Controller::on_browseButton_clicked()
@@ -284,7 +296,37 @@ void Controller::on_solveButton_clicked()
                               tr("Failed to get dialog from solver for setting parameters."));
         return;
     }
-    QString s("parameters"); // open dialog and get parameters form user
+    unsigned int dimArgs, dimParams;
+    if (problem->getArgsDim(dimArgs) != ERR_OK) {
+        problem_brocker->release();
+        solver_brocker->release();
+        QMessageBox::critical(this, tr("Failed to get dimension"),
+                              tr("Failed to get dimension of arguments from problem. Plot cannot be drawn."));
+        return;
+    }
+    if (problem->getParamsDim(dimParams) != ERR_OK) {
+        problem_brocker->release();
+        solver_brocker->release();
+        QMessageBox::critical(this, tr("Failed to get dimension"),
+                              tr("Failed to get dimension of parameters from problem. Plot cannot be drawn."));
+        return;
+    }
+    SolverParams sp(dimArgs, dimParams);
+    SolverDialog dialog(url, &sp, this);
+    if (dialog.exec() != QDialog::Accepted) {
+        problem_brocker->release();
+        solver_brocker->release();
+        return;
+    }
+    bool solveByArgs;
+    if (dialog.isSolveByArgs(solveByArgs) != ERR_OK) {
+        problem_brocker->release();
+        solver_brocker->release();
+        QMessageBox::critical(this, tr("Failed to get data from dialog"),
+                              tr("Failed to get data from dialog."));
+        return;
+    }
+    QString s = dialog.getParameters();
     if (solver->setParams(s) != ERR_OK) {
         problem_brocker->release();
         solver_brocker->release();
@@ -292,6 +334,8 @@ void Controller::on_solveButton_clicked()
                               tr("Failed to set parameters to solver."));
         return;
     }
+    QMessageBox::information(this, tr("Solution begins"),
+                          tr("Solution begins. This may take some time. So, don't worry."));
     if (solver->solve() != ERR_OK) {
         problem_brocker->release();
         solver_brocker->release();
@@ -299,29 +343,20 @@ void Controller::on_solveButton_clicked()
                               tr("Solver couldn't solve the problem. See log."));
         return;
     }
-    unsigned int dim;
-    if (problem->getArgsDim(dim) != ERR_OK) {
-        QMessageBox::critical(this, tr("Failed to get dimension"),
-                              tr("Failed to get dimension from problem. Plot cannot be drawn."));
-    } else {
-        spinAxis->setMinimum(1);
-        spinAxis->setMaximum(dim);
-        drawButton->setEnabled(true);
 
-        if (_problem_brocker) _problem_brocker->release();
-        if (_solver_brocker) _solver_brocker->release();
-        _problem_brocker = problem_brocker;
-        _solver_brocker = solver_brocker;
-        _solver = solver;
-        _problem = problem;
-    }
-    emit statusMessage(tr("Problem was solved."));
-}
+    _solve_by_args = solveByArgs;
+    spinAxis->setMinimum(1);
+    spinAxis->setMaximum(solveByArgs ? dimArgs : dimParams);
+    drawButton->setEnabled(true);
 
-// zaglushka
-double f(QVector<double> & x)
-{
-    return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+    if (_problem_brocker) _problem_brocker->release();
+    if (_solver_brocker) _solver_brocker->release();
+    _problem_brocker = problem_brocker;
+    _solver_brocker = solver_brocker;
+    _solver = solver;
+    _problem = problem;
+
+    QMessageBox::information(this, tr("Problem was solved"), tr("Problem was solved."));
 }
 
 void Controller::on_drawButton_clicked()
@@ -376,7 +411,7 @@ void Controller::on_drawButton_clicked()
     {
         iter->setCoord(axis - 1, X);
         x[i] = X;
-        if (!_problem->goalFunction(iter, NULL, y[i]) != ERR_OK) {
+        if ((_solve_by_args && _problem->goalFunctionByArgs(iter, y[i]) != ERR_OK) || _problem->goalFunctionByParams(iter, y[i]) != ERR_OK) {
             delete solution;
             delete iter;
             emit statusMessage(tr("Failed to get value of goal function."));
@@ -390,7 +425,7 @@ void Controller::on_drawButton_clicked()
         emit statusMessage(tr("Failed to get value of solution point."));
         return;
     }
-    if (!_problem->goalFunction(solution, NULL, py[0]) != ERR_OK) {
+    if ((_solve_by_args && _problem->goalFunctionByArgs(solution, py[0]) != ERR_OK) || _problem->goalFunctionByParams(solution, py[0]) != ERR_OK) {
         delete solution;
         emit statusMessage(tr("Failed to get value of goal function in the solution point."));
         return;
@@ -438,14 +473,4 @@ void Controller::on_saveImageButton_clicked()
         plot->savePng(fileName);
         emit statusMessage(tr("Image saved in %1.").arg(fileName));
     }
-}
-
-bool Controller::checkTable(QSqlRecord record)
-{
-    static QString fields[3] = {"Name", "Description", "Path"};
-    if (record.count() != 3) return false;
-    for (int i = 0; i < 3; ++i)
-        if (record.field(i).type() != QVariant::String
-                || record.field(i).name().compare(fields[i])) return false;
-    return true;
 }

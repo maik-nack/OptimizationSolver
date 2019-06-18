@@ -1,14 +1,14 @@
-QT       += core gui sql printsupport
+QT       += core gui sql printsupport declarative
 
 TARGET = optimization-solver
 TEMPLATE = app
-
 
 SOURCES += main.cpp \
     controller.cpp \
     sqlconnectiondialog.cpp \
     insertsolverdialog.cpp \
-    qcustomplot.cpp
+    qcustomplot.cpp \
+    solverdialog.cpp
 
 HEADERS  += \
     SHARED_EXPORT.h \
@@ -23,9 +23,11 @@ HEADERS  += \
     controller.h \
     sqlconnectiondialog.h \
     insertsolverdialog.h \
-    qcustomplot.h
+    qcustomplot.h \
+    solverdialog.h
 
 FORMS    += \
     controller.ui \
     sqlconnectiondialog.ui \
-    insertsolverdialog.ui
+    insertsolverdialog.ui \
+    solverdialog.ui
