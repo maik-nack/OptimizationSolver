@@ -330,7 +330,7 @@ int Solver1::solve() {
 }
 
 Solver1::Solver1():
-    _args(NULL), _params(NULL), _prev(NULL), _curr(NULL), _compact(NULL), _problem(NULL)
+    _args(NULL), _params(NULL), _compact(NULL), _prev(NULL), _curr(NULL), _problem(NULL)
  {}
 
 Solver1::~Solver1() {
@@ -381,12 +381,12 @@ int Solver1::setParams(IVector const* params) {
         return ERR_WRONG_ARG;
     }
     unsigned int dim, dimArgs, dimParams, tmp;
-    double * coords;
+    const double * coords;
     bool solveByArg;
     double epsilon;
     IVector * args, * param, * begin, * end;
     ICompact * compact;
-    if (params->getCoordsPtr(dim, qobject_cast<double const*&>(coords)) != ERR_OK) {
+    if (params->getCoordsPtr(dim, coords) != ERR_OK) {
         ILog::report("ISolver.setParams: Cannot get coords from params\n");
         return ERR_ANY_OTHER;
     }
@@ -425,32 +425,32 @@ int Solver1::setParams(IVector const* params) {
         ILog::report("ISolver.setParams: Wrong flag for solve by arguments\n");
         return ERR_WRONG_ARG;
     }
-    solveByArg = qobject_cast<bool>(tmp);
+    solveByArg = static_cast<bool>(tmp);
     tmp = dimArgs + dimParams + 4;
     if ((solveByArg && dim != tmp + 2 * dimArgs) || (!solveByArg && dim != tmp + 2 * dimParams)) {
         ILog::report("ISolver.setParams: Dimension of params is wrong\n");
         return ERR_WRONG_PROBLEM;
     }
     dim = solveByArg ? dimArgs : dimParams;
-    args = IVector::createVector(dimArgs, qobject_cast<double const*&>(coords + 4));
+    args = IVector::createVector(dimArgs, (coords + 4));
     if (!args) {
         ILog::report("ISolver.setParams: Canntot alloc memory for arguments\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    param = IVector::createVector(dimParams, qobject_cast<double const*&>(coords + 4 + dimArgs));
+    param = IVector::createVector(dimParams, (coords + 4 + dimArgs));
     if (!param) {
         delete args;
         ILog::report("ISolver.setParams: Canntot alloc memory for parameters\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    begin = IVector::createVector(dim, qobject_cast<double const*&>(coords + tmp));
+    begin = IVector::createVector(dim, (coords + tmp));
     if (!begin) {
         delete args;
         delete params;
         ILog::report("ISolver.setParams: Canntot alloc memory for begin of compact\n");
         return ERR_MEMORY_ALLOCATION;
     }
-    end = IVector::createVector(dim, qobject_cast<double const*&>(coords + tmp + dim));
+    end = IVector::createVector(dim, (coords + tmp + dim));
     if (!end) {
         delete args;
         delete params;
@@ -562,7 +562,7 @@ int Solver1::setParams(QString & str) {
         ILog::report("ISolver.setParams: Wrong string for solve by arguments or parameters\n");
         return ERR_WRONG_ARG;
     }
-    if (params.count() != dimArgs + dimParams + 4 + 2 * std::max(dimArgs, dimParams)) {
+    if (static_cast<unsigned>(params.count()) != dimArgs + dimParams + 4 + 2 * std::max(dimArgs, dimParams)) {
         ILog::report("ISolver.setParams: Count of params is wrong\n");
         return ERR_WRONG_PROBLEM;
     }
@@ -573,7 +573,7 @@ int Solver1::setParams(QString & str) {
         return ERR_MEMORY_ALLOCATION;
     }
     tmp2 = 4;
-    for (int i = 0; i < dimArgs; ++i) {
+    for (unsigned i = 0; i < dimArgs; ++i) {
         coords[i] = params.at(i + tmp2).toDouble(&ok);
         if (!ok) {
             delete coords;
@@ -581,14 +581,14 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    args = IVector::createVector(dimArgs, qobject_cast<double const*&>(coords));
+    args = IVector::createVector(dimArgs, (coords));
     if (!args) {
         delete coords;
         ILog::report("ISolver.setParams: Canntot alloc memory for arguments\n");
         return ERR_MEMORY_ALLOCATION;
     }
     tmp2 += dimArgs;
-    for (int i = 0; i < dimParams; ++i) {
+    for (unsigned i = 0; i < dimParams; ++i) {
         coords[i] = params.at(i + tmp2).toDouble(&ok);
         if (!ok) {
             delete coords;
@@ -597,7 +597,7 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    param = IVector::createVector(dimParams, qobject_cast<double const*&>(coords));
+    param = IVector::createVector(dimParams, (coords));
     if (!param) {
         delete coords;
         delete args;
@@ -605,7 +605,7 @@ int Solver1::setParams(QString & str) {
         return ERR_MEMORY_ALLOCATION;
     }
     tmp += dimParams;
-    for (int i = 0; i < dim; ++i) {
+    for (unsigned i = 0; i < dim; ++i) {
         coords[i] = params.at(i + tmp2).toDouble(&ok);
         if (!ok) {
             delete coords;
@@ -615,7 +615,7 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    begin = IVector::createVector(dim, qobject_cast<double const*&>(coords));
+    begin = IVector::createVector(dim, (coords));
     if (!begin) {
         delete coords;
         delete args;
@@ -624,7 +624,7 @@ int Solver1::setParams(QString & str) {
         return ERR_MEMORY_ALLOCATION;
     }
     tmp += std::max(dimArgs, dimParams);
-    for (int i = 0; i < dim; ++i) {
+    for (unsigned i = 0; i < dim; ++i) {
         coords[i] = params.at(i + tmp2).toDouble(&ok);
         if (!ok) {
             delete coords;
@@ -635,7 +635,7 @@ int Solver1::setParams(QString & str) {
             return ERR_ANY_OTHER;
         }
     }
-    end = IVector::createVector(dim, qobject_cast<double const*&>(coords));
+    end = IVector::createVector(dim, (coords));
     if (!end) {
         delete coords;
         delete args;
