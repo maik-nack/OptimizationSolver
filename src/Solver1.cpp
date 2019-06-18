@@ -340,6 +340,7 @@ int Solver1::solve() {
                 break;
         }
     }
+    return ERR_OK;
 }
 
 Solver1::Solver1():
