@@ -1,4 +1,5 @@
 #include <new>
+#include <QFile>
 
 #include "ILog.h"
 #include "IBrocker.h"
@@ -80,6 +81,14 @@ int Solver1::getId() const {
 
 int Brocker2::getId() const {
     return IBrocker::INTERFACE_0;
+}
+
+int Solver1::getQml(QUrl& qml) const {
+    QString file = "qrc:/solver1.qml";
+    if (!QFile::exists(file))
+        return ERR_ANY_OTHER;
+    qml = QUrl::fromLocalFile(file);
+    return ERR_OK;
 }
 
 bool Brocker2::canCastTo(Type type) const {
