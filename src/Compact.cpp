@@ -578,8 +578,8 @@ int Compact::checkStepCorrectness(IVector const *step) const
 
 bool Compact::vectorPrecisionEquals(IVector const *v1, IVector const *v2) const
 {
-	double coord1 = 0.0, coord2 = 0.0, samplingVal = 0.0;
-	unsigned dimension, dist;
+	double coord1 = 0.0, coord2 = 0.0, samplingVal = 0.0, dist;
+	unsigned dimension;
 	if (!v1 || !v2)
 	{
 		return false;
